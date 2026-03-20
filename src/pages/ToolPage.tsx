@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import { getToolById } from "@/data/tools";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Copy, Download, Loader2, Sparkles, Check } from "lucide-react";
 import { toast } from "sonner";
+
+const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate`;
 
 const ToolPage = () => {
   const { toolId } = useParams<{ toolId: string }>();
@@ -13,6 +15,7 @@ const ToolPage = () => {
   const [output, setOutput] = useState("");
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
 
   if (!tool) {
     return (
@@ -32,16 +35,113 @@ const ToolPage = () => {
       toast.error("Please enter some input first");
       return;
     }
+
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     setLoading(true);
     setOutput("");
 
-    // Simulate AI generation (replace with real API call when backend is connected)
-    await new Promise((r) => setTimeout(r, 2000));
+    try {
+      const resp = await fetch(CHAT_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({
+          toolName: tool.name,
+          toolPrompt: tool.prompt,
+          userInput: input,
+        }),
+        signal: controller.signal,
+      });
 
-    const mockOutput = generateMockOutput(tool.name, input);
-    setOutput(mockOutput);
-    setLoading(false);
-    toast.success("Generated successfully!");
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({ error: "Generation failed" }));
+        if (resp.status === 429) {
+          toast.error("Rate limit reached — please wait a moment and try again.");
+        } else if (resp.status === 402) {
+          toast.error("AI credits exhausted. Please add funds to your workspace.");
+        } else {
+          toast.error(err.error || "Something went wrong");
+        }
+        setLoading(false);
+        return;
+      }
+
+      if (!resp.body) {
+        toast.error("No response stream");
+        setLoading(false);
+        return;
+      }
+
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let accumulated = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        let newlineIndex: number;
+        while ((newlineIndex = buffer.indexOf("\n")) !== -1) {
+          let line = buffer.slice(0, newlineIndex);
+          buffer = buffer.slice(newlineIndex + 1);
+
+          if (line.endsWith("\r")) line = line.slice(0, -1);
+          if (line.startsWith(":") || line.trim() === "") continue;
+          if (!line.startsWith("data: ")) continue;
+
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr === "[DONE]") break;
+
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const content = parsed.choices?.[0]?.delta?.content;
+            if (content) {
+              accumulated += content;
+              setOutput(accumulated);
+            }
+          } catch {
+            buffer = line + "\n" + buffer;
+            break;
+          }
+        }
+      }
+
+      // Flush remaining buffer
+      if (buffer.trim()) {
+        for (let raw of buffer.split("\n")) {
+          if (!raw) continue;
+          if (raw.endsWith("\r")) raw = raw.slice(0, -1);
+          if (raw.startsWith(":") || raw.trim() === "") continue;
+          if (!raw.startsWith("data: ")) continue;
+          const jsonStr = raw.slice(6).trim();
+          if (jsonStr === "[DONE]") continue;
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const content = parsed.choices?.[0]?.delta?.content;
+            if (content) {
+              accumulated += content;
+              setOutput(accumulated);
+            }
+          } catch { /* ignore */ }
+        }
+      }
+
+      toast.success("Generated successfully!");
+    } catch (e: any) {
+      if (e.name !== "AbortError") {
+        console.error("Generation error:", e);
+        toast.error("Generation failed — please try again.");
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleCopy = () => {
@@ -112,22 +212,25 @@ const ToolPage = () => {
         </div>
 
         {/* Output */}
-        {output && (
+        {(output || loading) && (
           <div className="mt-6 rounded-xl border border-border bg-card p-6 animate-fade-up">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="font-display text-sm font-semibold">Output</h3>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={handleCopy}>
-                  {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-                  {copied ? "Copied" : "Copy"}
-                </Button>
-                <Button variant="outline" size="sm" onClick={handleDownload}>
-                  <Download className="h-3.5 w-3.5" /> Download
-                </Button>
-              </div>
+              {output && !loading && (
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={handleCopy}>
+                    {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                    {copied ? "Copied" : "Copy"}
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={handleDownload}>
+                    <Download className="h-3.5 w-3.5" /> Download
+                  </Button>
+                </div>
+              )}
             </div>
             <div className="rounded-lg bg-background p-4 text-sm leading-relaxed whitespace-pre-wrap">
-              {output}
+              {output || (loading && <span className="text-muted-foreground animate-pulse">Generating…</span>)}
+              {loading && output && <span className="inline-block w-1.5 h-4 bg-primary/70 animate-pulse ml-0.5 align-text-bottom rounded-sm" />}
             </div>
           </div>
         )}
@@ -135,32 +238,5 @@ const ToolPage = () => {
     </div>
   );
 };
-
-function generateMockOutput(toolName: string, input: string): string {
-  return `# ${toolName} — Generated Output
-
-Based on your input: "${input}"
-
----
-
-## Overview
-This is a demo output. Connect Lovable Cloud to enable real AI-powered generation using the Lovable AI gateway.
-
-## Key Points
-• Point 1: Tailored specifically to "${input}"
-• Point 2: Optimized for maximum impact and engagement
-• Point 3: Ready to copy, customize, and deploy
-
-## Next Steps
-1. Review and refine the output above
-2. Customize it to match your brand voice
-3. Deploy it across your channels
-
-## Pro Tip
-Upgrade to Premium for unlimited generations, faster processing, and access to advanced tools.
-
----
-Generated by AI Hustle Studio`;
-}
 
 export default ToolPage;
