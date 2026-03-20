@@ -1,17 +1,87 @@
 import { useState, useRef } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { getToolById } from "@/data/tools";
+import type { ToolInput } from "@/data/tools";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { ArrowLeft, Copy, Download, Loader2, Sparkles, Check } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate`;
+
+const ToolInputField = ({
+  input,
+  value,
+  onChange,
+}: {
+  input: ToolInput;
+  value: string;
+  onChange: (val: string) => void;
+}) => {
+  if (input.type === "select") {
+    return (
+      <div>
+        <label className="mb-1.5 block text-sm font-medium">
+          {input.label}
+          {input.required && <span className="ml-1 text-destructive">*</span>}
+        </label>
+        <select
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-full rounded-lg border border-border bg-background p-3 text-sm focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/50 transition-colors"
+        >
+          <option value="">{input.placeholder}</option>
+          {input.options?.map((opt) => (
+            <option key={opt} value={opt}>
+              {opt}
+            </option>
+          ))}
+        </select>
+      </div>
+    );
+  }
+
+  if (input.type === "textarea") {
+    return (
+      <div>
+        <label className="mb-1.5 block text-sm font-medium">
+          {input.label}
+          {input.required && <span className="ml-1 text-destructive">*</span>}
+        </label>
+        <textarea
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={input.placeholder}
+          rows={3}
+          className="w-full rounded-lg border border-border bg-background p-3 text-sm placeholder:text-muted-foreground focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/50 transition-colors resize-none"
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <label className="mb-1.5 block text-sm font-medium">
+        {input.label}
+        {input.required && <span className="ml-1 text-destructive">*</span>}
+      </label>
+      <Input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={input.placeholder}
+      />
+    </div>
+  );
+};
 
 const ToolPage = () => {
   const { toolId } = useParams<{ toolId: string }>();
   const tool = getToolById(toolId || "");
+  const { user } = useAuth();
+  const navigate = useNavigate();
 
-  const [input, setInput] = useState("");
+  const [inputValues, setInputValues] = useState<Record<string, string>>({});
   const [output, setOutput] = useState("");
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -30,9 +100,30 @@ const ToolPage = () => {
     );
   }
 
+  const setField = (key: string, val: string) =>
+    setInputValues((prev) => ({ ...prev, [key]: val }));
+
+  const buildUserInput = () => {
+    return tool.inputs
+      .map((inp) => {
+        const val = inputValues[inp.key]?.trim();
+        if (!val) return null;
+        return `${inp.label}: ${val}`;
+      })
+      .filter(Boolean)
+      .join("\n");
+  };
+
   const handleGenerate = async () => {
-    if (!input.trim()) {
-      toast.error("Please enter some input first");
+    if (!user) {
+      toast.error("Please sign in to generate content");
+      navigate("/auth");
+      return;
+    }
+
+    const missing = tool.inputs.filter((i) => i.required && !inputValues[i.key]?.trim());
+    if (missing.length) {
+      toast.error(`Please fill in: ${missing.map((m) => m.label).join(", ")}`);
       return;
     }
 
@@ -44,6 +135,7 @@ const ToolPage = () => {
     setOutput("");
 
     try {
+      const userInput = buildUserInput();
       const resp = await fetch(CHAT_URL, {
         method: "POST",
         headers: {
@@ -53,7 +145,7 @@ const ToolPage = () => {
         body: JSON.stringify({
           toolName: tool.name,
           toolPrompt: tool.prompt,
-          userInput: input,
+          userInput,
         }),
         signal: controller.signal,
       });
@@ -63,7 +155,7 @@ const ToolPage = () => {
         if (resp.status === 429) {
           toast.error("Rate limit reached — please wait a moment and try again.");
         } else if (resp.status === 402) {
-          toast.error("AI credits exhausted. Please add funds to your workspace.");
+          toast.error("AI credits exhausted. Please try again later.");
         } else {
           toast.error(err.error || "Something went wrong");
         }
@@ -113,7 +205,6 @@ const ToolPage = () => {
         }
       }
 
-      // Flush remaining buffer
       if (buffer.trim()) {
         for (let raw of buffer.split("\n")) {
           if (!raw) continue;
@@ -182,20 +273,21 @@ const ToolPage = () => {
           </div>
         </div>
 
-        {/* Input */}
-        <div className="rounded-xl border border-border bg-card p-6">
-          <label className="block text-sm font-medium mb-2">{tool.inputLabel}</label>
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder={tool.inputPlaceholder}
-            className="w-full rounded-lg border border-border bg-background p-4 text-sm placeholder:text-muted-foreground focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/50 transition-colors resize-none"
-            rows={4}
-          />
+        {/* Inputs */}
+        <div className="rounded-xl border border-border bg-card p-6 space-y-4">
+          {tool.inputs.map((inp) => (
+            <ToolInputField
+              key={inp.key}
+              input={inp}
+              value={inputValues[inp.key] || ""}
+              onChange={(val) => setField(inp.key, val)}
+            />
+          ))}
+
           <Button
             variant="hero"
             size="lg"
-            className="mt-4 w-full"
+            className="mt-2 w-full"
             onClick={handleGenerate}
             disabled={loading}
           >
