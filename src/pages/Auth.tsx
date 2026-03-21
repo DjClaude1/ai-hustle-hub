@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Zap, Loader2, Mail, Lock, User } from "lucide-react";
+import { LayoutDashboard, Loader2, Mail, Lock, User } from "lucide-react";
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -52,26 +52,24 @@ const Auth = () => {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center pt-16 pb-16">
-      <div className="w-full max-w-md px-4">
+    <div className="flex min-h-screen items-center justify-center pt-14 pb-16 bg-secondary/30">
+      <div className="w-full max-w-sm px-4">
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary">
-            <Zap className="h-6 w-6 text-primary-foreground" />
+          <div className="mx-auto mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-primary shadow-soft">
+            <LayoutDashboard className="h-5 w-5 text-primary-foreground" />
           </div>
-          <h1 className="font-display text-2xl font-bold">
-            {isLogin ? "Welcome Back" : "Create Your Account"}
+          <h1 className="font-display text-xl font-bold text-foreground">
+            {isLogin ? "Welcome back" : "Create your account"}
           </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            {isLogin
-              ? "Sign in to access your AI tools"
-              : "Join thousands of hustlers using AI"}
+          <p className="mt-1.5 text-sm text-muted-foreground">
+            {isLogin ? "Sign in to access your tools" : "Start building with AI today"}
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4 rounded-xl border border-border bg-card p-6">
+        <form onSubmit={handleSubmit} className="space-y-4 rounded-xl border border-border bg-card p-6 shadow-card">
           {!isLogin && (
             <div>
-              <label className="mb-1.5 block text-sm font-medium">Full Name</label>
+              <label className="mb-1.5 block text-sm font-medium text-foreground">Full Name</label>
               <div className="relative">
                 <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
@@ -85,7 +83,7 @@ const Auth = () => {
           )}
 
           <div>
-            <label className="mb-1.5 block text-sm font-medium">Email</label>
+            <label className="mb-1.5 block text-sm font-medium text-foreground">Email</label>
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -99,7 +97,7 @@ const Auth = () => {
           </div>
 
           <div>
-            <label className="mb-1.5 block text-sm font-medium">Password</label>
+            <label className="mb-1.5 block text-sm font-medium text-foreground">Password</label>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input

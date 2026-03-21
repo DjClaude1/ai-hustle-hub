@@ -22,20 +22,18 @@ const ToolInputField = ({
   if (input.type === "select") {
     return (
       <div>
-        <label className="mb-1.5 block text-sm font-medium">
+        <label className="mb-1.5 block text-sm font-medium text-foreground">
           {input.label}
           {input.required && <span className="ml-1 text-destructive">*</span>}
         </label>
         <select
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="w-full rounded-lg border border-border bg-background p-3 text-sm focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/50 transition-colors"
+          className="w-full rounded-lg border border-border bg-background p-3 text-sm text-foreground focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
         >
           <option value="">{input.placeholder}</option>
           {input.options?.map((opt) => (
-            <option key={opt} value={opt}>
-              {opt}
-            </option>
+            <option key={opt} value={opt}>{opt}</option>
           ))}
         </select>
       </div>
@@ -45,7 +43,7 @@ const ToolInputField = ({
   if (input.type === "textarea") {
     return (
       <div>
-        <label className="mb-1.5 block text-sm font-medium">
+        <label className="mb-1.5 block text-sm font-medium text-foreground">
           {input.label}
           {input.required && <span className="ml-1 text-destructive">*</span>}
         </label>
@@ -54,7 +52,7 @@ const ToolInputField = ({
           onChange={(e) => onChange(e.target.value)}
           placeholder={input.placeholder}
           rows={3}
-          className="w-full rounded-lg border border-border bg-background p-3 text-sm placeholder:text-muted-foreground focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/50 transition-colors resize-none"
+          className="w-full rounded-lg border border-border bg-background p-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all resize-none"
         />
       </div>
     );
@@ -62,7 +60,7 @@ const ToolInputField = ({
 
   return (
     <div>
-      <label className="mb-1.5 block text-sm font-medium">
+      <label className="mb-1.5 block text-sm font-medium text-foreground">
         {input.label}
         {input.required && <span className="ml-1 text-destructive">*</span>}
       </label>
@@ -89,9 +87,9 @@ const ToolPage = () => {
 
   if (!tool) {
     return (
-      <div className="flex min-h-screen items-center justify-center pt-16">
+      <div className="flex min-h-screen items-center justify-center pt-14">
         <div className="text-center">
-          <h1 className="font-display text-2xl font-bold">Tool not found</h1>
+          <h1 className="font-display text-2xl font-bold text-foreground">Tool not found</h1>
           <Link to="/dashboard" className="mt-4 inline-block text-primary hover:underline">
             ← Back to Dashboard
           </Link>
@@ -254,8 +252,8 @@ const ToolPage = () => {
   };
 
   return (
-    <div className="min-h-screen pt-24 pb-16">
-      <div className="container max-w-3xl">
+    <div className="min-h-screen pt-20 pb-16 bg-background">
+      <div className="container max-w-2xl">
         <Link
           to="/dashboard"
           className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -264,17 +262,17 @@ const ToolPage = () => {
         </Link>
 
         <div className="flex items-center gap-3 mb-8">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
-            <tool.icon className="h-6 w-6" />
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <tool.icon className="h-5 w-5" />
           </div>
           <div>
-            <h1 className="font-display text-2xl font-bold">{tool.name}</h1>
+            <h1 className="font-display text-xl font-bold text-foreground">{tool.name}</h1>
             <p className="text-sm text-muted-foreground">{tool.description}</p>
           </div>
         </div>
 
         {/* Inputs */}
-        <div className="rounded-xl border border-border bg-card p-6 space-y-4">
+        <div className="rounded-xl border border-border bg-card p-6 shadow-soft space-y-4">
           {tool.inputs.map((inp) => (
             <ToolInputField
               key={inp.key}
@@ -305,9 +303,9 @@ const ToolPage = () => {
 
         {/* Output */}
         {(output || loading) && (
-          <div className="mt-6 rounded-xl border border-border bg-card p-6 animate-fade-up">
+          <div className="mt-6 rounded-xl border border-border bg-card p-6 shadow-soft animate-fade-up">
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="font-display text-sm font-semibold">Output</h3>
+              <h3 className="font-display text-sm font-semibold text-foreground">Output</h3>
               {output && !loading && (
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm" onClick={handleCopy}>
@@ -320,9 +318,9 @@ const ToolPage = () => {
                 </div>
               )}
             </div>
-            <div className="rounded-lg bg-background p-4 text-sm leading-relaxed whitespace-pre-wrap">
+            <div className="rounded-lg border border-border bg-secondary/50 p-4 text-sm leading-relaxed text-foreground whitespace-pre-wrap">
               {output || (loading && <span className="text-muted-foreground animate-pulse">Generating…</span>)}
-              {loading && output && <span className="inline-block w-1.5 h-4 bg-primary/70 animate-pulse ml-0.5 align-text-bottom rounded-sm" />}
+              {loading && output && <span className="inline-block w-1.5 h-4 bg-primary/60 animate-pulse ml-0.5 align-text-bottom rounded-sm" />}
             </div>
           </div>
         )}
