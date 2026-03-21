@@ -14,8 +14,9 @@ export default {
     },
     extend: {
       fontFamily: {
-        display: ['"Space Grotesk"', 'system-ui', 'sans-serif'],
-        body: ['Inter', 'system-ui', 'sans-serif'],
+        display: ['"DM Sans"', 'system-ui', 'sans-serif'],
+        body: ['"DM Sans"', 'system-ui', 'sans-serif'],
+        mono: ['"JetBrains Mono"', 'monospace'],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -67,6 +68,11 @@ export default {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
+      boxShadow: {
+        soft: "0 1px 3px 0 hsl(0 0% 0% / 0.04), 0 1px 2px -1px hsl(0 0% 0% / 0.04)",
+        card: "0 2px 8px -2px hsl(0 0% 0% / 0.06), 0 4px 16px -4px hsl(0 0% 0% / 0.08)",
+        elevated: "0 4px 12px -2px hsl(0 0% 0% / 0.08), 0 8px 24px -4px hsl(0 0% 0% / 0.1)",
+      },
       keyframes: {
         "accordion-down": {
           from: { height: "0" },
@@ -77,7 +83,7 @@ export default {
           to: { height: "0" },
         },
         "fade-up": {
-          from: { opacity: "0", transform: "translateY(16px)", filter: "blur(4px)" },
+          from: { opacity: "0", transform: "translateY(20px)", filter: "blur(4px)" },
           to: { opacity: "1", transform: "translateY(0)", filter: "blur(0px)" },
         },
         "fade-in": {
@@ -88,23 +94,13 @@ export default {
           from: { opacity: "0", transform: "scale(0.96)" },
           to: { opacity: "1", transform: "scale(1)" },
         },
-        shimmer: {
-          from: { backgroundPosition: "200% 0" },
-          to: { backgroundPosition: "-200% 0" },
-        },
-        pulse_glow: {
-          "0%, 100%": { opacity: "0.4" },
-          "50%": { opacity: "0.8" },
-        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
-        "fade-up": "fade-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards",
+        "fade-up": "fade-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards",
         "fade-in": "fade-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards",
         "scale-in": "scale-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards",
-        shimmer: "shimmer 8s ease-in-out infinite",
-        pulse_glow: "pulse_glow 3s ease-in-out infinite",
       },
     },
   },
