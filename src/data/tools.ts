@@ -393,7 +393,7 @@ export const tools: Tool[] = [
     description: "Create ATS-optimized resumes tailored to specific roles and industries",
     category: "Freelancing",
     icon: User,
-    prompt: "Build a professional, ATS-optimized resume with a compelling summary, quantified achievements, skills section optimized for the target role, and formatting recommendations. Use action verbs and metrics throughout.",
+    prompt: "Build a professional, ATS-optimized resume with a compelling summary, quantified achievements, skills section optimized for the target role, and formatting recommendations. Use action verbs and metrics throughout. If personal details are provided (name, email, phone, location, LinkedIn, portfolio), include them in a professional header section.",
     inputs: [
       { key: "role", label: "Target Role", placeholder: "e.g., Senior Frontend Developer", type: "text", required: true },
       { key: "experience", label: "Work Experience Summary", placeholder: "List your relevant positions, companies, and key achievements...", type: "textarea", required: true },
@@ -401,6 +401,9 @@ export const tools: Tool[] = [
       { key: "education", label: "Education", placeholder: "e.g., B.S. Computer Science, University of California, 2018", type: "text" },
       { key: "years", label: "Years of Experience", placeholder: "Select range", type: "select", options: ["0-1 (Entry Level)", "1-3 (Junior)", "3-5 (Mid-Level)", "5-10 (Senior)", "10+ (Principal/Lead)"] },
       { key: "style", label: "Resume Style", placeholder: "Select style", type: "select", options: ["Traditional/Corporate", "Modern/Creative", "Technical/Engineering", "Executive", "Career Changer"] },
+      { key: "certifications", label: "Certifications & Awards", placeholder: "e.g., AWS Certified, Google Analytics, PMP", type: "text" },
+      { key: "languages", label: "Languages Spoken", placeholder: "e.g., English (native), Spanish (fluent), French (basic)", type: "text" },
+      { key: "summary", label: "Professional Summary / Objective", placeholder: "Brief overview of your career goals and value proposition (optional — AI will write one if blank)", type: "textarea" },
     ],
   },
   {
