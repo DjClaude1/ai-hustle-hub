@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -19,6 +20,44 @@ serve(async (req) => {
         JSON.stringify({ error: "toolName and userInput are required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // Auth check & usage limit
+    const authHeader = req.headers.get("Authorization");
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+    // Try to get user from JWT
+    let userId: string | null = null;
+    if (authHeader && authHeader !== `Bearer ${supabaseKey}`) {
+      const userClient = createClient(supabaseUrl, supabaseKey, {
+        global: { headers: { Authorization: authHeader } },
+      });
+      const { data: { user } } = await userClient.auth.getUser();
+      userId = user?.id ?? null;
+    }
+
+    // Check usage if user is authenticated
+    if (userId) {
+      const adminClient = createClient(supabaseUrl, serviceKey);
+      const { data: usageResult, error: usageError } = await adminClient.rpc(
+        "check_and_increment_usage",
+        { p_user_id: userId }
+      );
+
+      if (usageError) {
+        console.error("Usage check error:", usageError);
+      } else if (usageResult && !usageResult.allowed) {
+        return new Response(
+          JSON.stringify({
+            error: "Daily limit reached. Upgrade to Premium for unlimited generations.",
+            code: "LIMIT_REACHED",
+            remaining: 0,
+          }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
