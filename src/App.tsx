@@ -9,6 +9,7 @@ import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import ToolPage from "./pages/ToolPage";
 import Auth from "./pages/Auth";
+import HistoryPage from "./pages/HistoryPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
