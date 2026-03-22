@@ -14,6 +14,60 @@ export type Database = {
   }
   public: {
     Tables: {
+      drafts: {
+        Row: {
+          id: string
+          inputs: Json
+          tool_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          inputs?: Json
+          tool_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          inputs?: Json
+          tool_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      generations: {
+        Row: {
+          created_at: string
+          id: string
+          inputs: Json
+          output: string
+          tool_id: string
+          tool_name: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          inputs?: Json
+          output?: string
+          tool_id: string
+          tool_name: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          inputs?: Json
+          output?: string
+          tool_id?: string
+          tool_name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -55,7 +109,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      check_and_increment_usage: { Args: { p_user_id: string }; Returns: Json }
     }
     Enums: {
       [_ in never]: never
