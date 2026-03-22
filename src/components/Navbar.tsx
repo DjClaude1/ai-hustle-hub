@@ -24,6 +24,11 @@ export const Navbar = () => {
               <Link to="/dashboard">
                 <Button variant="ghost" size="sm">Dashboard</Button>
               </Link>
+              <Link to="/history">
+                <Button variant="ghost" size="sm" className="gap-1.5">
+                  <History className="h-3.5 w-3.5" /> History
+                </Button>
+              </Link>
               <div className="flex items-center gap-2 rounded-lg border border-border bg-secondary px-3 py-1.5 text-sm">
                 <User className="h-3.5 w-3.5 text-muted-foreground" />
                 <span className="hidden sm:inline max-w-[120px] truncate text-muted-foreground">
