@@ -333,14 +333,32 @@ const ToolPage = () => {
     );
   }
 
-  const buildUserInput = () =>
-    tool.inputs
-      .map((inp) => {
-        const val = inputValues[inp.key]?.trim();
-        return val ? `${inp.label}: ${val}` : null;
-      })
-      .filter(Boolean)
-      .join("\n");
+  const buildUserInput = () => {
+    const lines: string[] = [];
+
+    // Include personal details for resume/cover letter
+    if (isResumeBuilder) {
+      const personalFields = [
+        ["fullName", "Full Name"], ["contactEmail", "Email"], ["phone", "Phone"],
+        ["location", "Location"], ["linkedIn", "LinkedIn"], ["portfolio", "Portfolio/Website"],
+      ];
+      const personalLines = personalFields
+        .map(([key, label]) => inputValues[key]?.trim() ? `${label}: ${inputValues[key].trim()}` : null)
+        .filter(Boolean);
+      if (personalLines.length) {
+        lines.push("=== Personal Details ===");
+        lines.push(...(personalLines as string[]));
+        lines.push("");
+      }
+    }
+
+    tool.inputs.forEach((inp) => {
+      const val = inputValues[inp.key]?.trim();
+      if (val) lines.push(`${inp.label}: ${val}`);
+    });
+
+    return lines.join("\n");
+  };
 
   const handleGenerate = async () => {
     if (!user) {
