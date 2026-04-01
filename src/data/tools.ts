@@ -53,7 +53,7 @@ export const tools: Tool[] = [
     description: "Generate a full eBook outline with chapters, key takeaways, and content summaries",
     category: "Product Creation",
     icon: BookOpen,
-    prompt: "Generate a detailed, publish-ready eBook outline with chapters, subheadings, key takeaways, word count estimates, and a compelling introduction and conclusion.",
+    prompt: "Write a COMPLETE, FULL-LENGTH eBook — not an outline. Write the entire book from cover to cover with a compelling introduction, every chapter fully written out with multiple pages of prose, real examples, case studies, actionable advice, exercises, and a powerful conclusion. Each chapter must be 800-2000+ words of actual content. The total book must be at minimum 15 pages (and scale to the requested chapter count). Do NOT write an outline — write the actual book.",
     inputs: [
       { key: "topic", label: "eBook Topic", placeholder: "e.g., How to Start a Profitable Online Business in 2025", type: "text", required: true },
       { key: "audience", label: "Target Audience", placeholder: "e.g., Aspiring entrepreneurs aged 25-40", type: "text", required: true },
