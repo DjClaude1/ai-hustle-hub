@@ -84,7 +84,7 @@ export const tools: Tool[] = [
     description: "Create comprehensive, downloadable PDF guides with structured sections",
     category: "Product Creation",
     icon: FileText,
-    prompt: "Create a comprehensive, well-structured PDF guide with an introduction, detailed sections with actionable content, visual layout suggestions, and a conclusion with next steps.",
+    prompt: "Write a COMPLETE, FULL-LENGTH PDF guide — not an outline. Write every section in full with detailed prose, step-by-step instructions, real examples, checklists, comparison tables, resource lists, and actionable takeaways. The guide should be ready to format and publish immediately with no gaps or placeholders.",
     inputs: [
       { key: "topic", label: "Guide Topic", placeholder: "e.g., The Ultimate Guide to Remote Work Productivity", type: "text", required: true },
       { key: "pages", label: "Estimated Pages", placeholder: "Select page count", type: "select", options: ["5-10", "10-20", "20-30", "30-50"] },
