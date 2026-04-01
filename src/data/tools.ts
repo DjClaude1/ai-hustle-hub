@@ -33,6 +33,7 @@ export interface Tool {
   prompt: string;
   inputs: ToolInput[];
   premium?: boolean;
+  isImageTool?: boolean;
 }
 
 export const categories: { name: ToolCategory; emoji: string }[] = [
