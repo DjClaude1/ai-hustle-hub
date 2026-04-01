@@ -677,6 +677,11 @@ const ToolPage = () => {
             </div>
           </div>
         )}
+
+        {/* Share to Social */}
+        {output && !loading && (
+          <SharePanel toolName={tool.name} category={tool.category} output={output} />
+        )}
       </div>
     </div>
   );

@@ -27,6 +27,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/tool/ai-image-generator" element={<ImageGeneratorPage />} />
             <Route path="/tool/:toolId" element={<ToolPage />} />
             <Route path="/history" element={<HistoryPage />} />
             <Route path="*" element={<NotFound />} />
