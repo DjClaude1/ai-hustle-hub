@@ -296,7 +296,7 @@ export const tools: Tool[] = [
     description: "Write engaging YouTube scripts with hooks, retention strategies, and CTAs",
     category: "Content Creation",
     icon: Youtube,
-    prompt: "Write a complete YouTube video script with a pattern-interrupt hook (first 5 seconds), intro, structured main content with retention loops, B-roll suggestions, CTA placements, and an end screen script.",
+    prompt: "Write a COMPLETE, word-for-word YouTube video script ready to read on camera. Include the exact spoken dialogue for every section: pattern-interrupt hook (first 5 seconds), intro, all main content sections with full narration written out, B-roll direction notes in [brackets], CTA placements, transitions between segments, and end screen script. Do NOT write bullet points — write the full script as spoken word.",
     inputs: [
       { key: "topic", label: "Video Topic", placeholder: "e.g., How I made $10K/month with AI tools", type: "text", required: true },
       { key: "duration", label: "Target Duration", placeholder: "Select duration", type: "select", options: ["Under 3 min (Short)", "5-8 min", "8-12 min", "12-20 min", "20+ min (Long-Form)"] },
