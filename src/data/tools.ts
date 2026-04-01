@@ -262,7 +262,7 @@ export const tools: Tool[] = [
     description: "Write complete long-form sales page copy with proven conversion frameworks",
     category: "Marketing",
     icon: FileSpreadsheet,
-    prompt: "Write a complete long-form sales page using proven copywriting frameworks (AIDA, PAS, or Story-based). Include headline, subheadlines, problem agitation, solution presentation, benefits, social proof, objection handling, guarantee, pricing presentation, FAQ, and multiple CTAs.",
+    prompt: "Write a COMPLETE, FULL long-form sales page — every word of copy ready to publish. Use the specified copywriting framework. Write the actual headline, every subheadline, full problem agitation paragraphs, solution presentation, detailed benefit sections, social proof sections, objection-handling copy, guarantee section, pricing presentation, complete FAQ with answers, and multiple CTAs. Write it ALL out — no placeholders.",
     premium: true,
     inputs: [
       { key: "product", label: "Product/Offer Name", placeholder: "e.g., $497 coaching program for entrepreneurs", type: "text", required: true },
