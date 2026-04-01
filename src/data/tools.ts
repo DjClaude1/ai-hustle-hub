@@ -53,11 +53,11 @@ export const tools: Tool[] = [
     description: "Generate a full eBook outline with chapters, key takeaways, and content summaries",
     category: "Product Creation",
     icon: BookOpen,
-    prompt: "Generate a detailed, publish-ready eBook outline with chapters, subheadings, key takeaways, word count estimates, and a compelling introduction and conclusion.",
+    prompt: "Write a COMPLETE, FULL-LENGTH eBook — not an outline. Write the entire book from cover to cover with a compelling introduction, every chapter fully written out with multiple pages of prose, real examples, case studies, actionable advice, exercises, and a powerful conclusion. Each chapter must be 800-2000+ words of actual content. The total book must be at minimum 15 pages (and scale to the requested chapter count). Do NOT write an outline — write the actual book.",
     inputs: [
       { key: "topic", label: "eBook Topic", placeholder: "e.g., How to Start a Profitable Online Business in 2025", type: "text", required: true },
       { key: "audience", label: "Target Audience", placeholder: "e.g., Aspiring entrepreneurs aged 25-40", type: "text", required: true },
-      { key: "chapters", label: "Number of Chapters", placeholder: "Select chapter count", type: "select", options: ["5", "7", "10", "12", "15"] },
+      { key: "chapters", label: "Number of Chapters", placeholder: "Select chapter count", type: "select", options: ["5", "7", "10", "12", "15", "20", "25", "30"] },
       { key: "tone", label: "Writing Tone", placeholder: "Select tone", type: "select", options: ["Professional", "Conversational", "Motivational", "Academic", "Storytelling"] },
       { key: "extras", label: "Special Requests", placeholder: "e.g., Include case studies, add actionable exercises at the end of each chapter", type: "textarea" },
     ],
@@ -68,7 +68,7 @@ export const tools: Tool[] = [
     description: "Create a comprehensive online course curriculum with modules, lessons, and assignments",
     category: "Product Creation",
     icon: GraduationCap,
-    prompt: "Generate a comprehensive online course curriculum including modules, individual lessons with descriptions, learning objectives, suggested assignments, and a recommended delivery timeline.",
+    prompt: "Create a COMPLETE online course with full lesson content written out — not just titles and descriptions. Write the actual teaching material for every lesson, complete assignment briefs, quiz questions with answers, project descriptions, and detailed scripts/talking points. Each module should have fully written lessons that an instructor can use directly.",
     inputs: [
       { key: "topic", label: "Course Topic", placeholder: "e.g., Digital Marketing Mastery for Small Businesses", type: "text", required: true },
       { key: "level", label: "Difficulty Level", placeholder: "Select level", type: "select", options: ["Beginner", "Intermediate", "Advanced", "All Levels"] },
@@ -84,7 +84,7 @@ export const tools: Tool[] = [
     description: "Create comprehensive, downloadable PDF guides with structured sections",
     category: "Product Creation",
     icon: FileText,
-    prompt: "Create a comprehensive, well-structured PDF guide with an introduction, detailed sections with actionable content, visual layout suggestions, and a conclusion with next steps.",
+    prompt: "Write a COMPLETE, FULL-LENGTH PDF guide — not an outline. Write every section in full with detailed prose, step-by-step instructions, real examples, checklists, comparison tables, resource lists, and actionable takeaways. The guide should be ready to format and publish immediately with no gaps or placeholders.",
     inputs: [
       { key: "topic", label: "Guide Topic", placeholder: "e.g., The Ultimate Guide to Remote Work Productivity", type: "text", required: true },
       { key: "pages", label: "Estimated Pages", placeholder: "Select page count", type: "select", options: ["5-10", "10-20", "20-30", "30-50"] },
@@ -246,7 +246,7 @@ export const tools: Tool[] = [
     description: "Create complete email sequences with subject lines, body copy, and CTAs",
     category: "Marketing",
     icon: Mail,
-    prompt: "Create a complete email marketing sequence with compelling subject lines (with A/B variants), preview text, body copy, CTAs, and send timing recommendations. Include personalization tokens and segmentation suggestions.",
+    prompt: "Write a COMPLETE email marketing sequence with EVERY email fully written out. For each email include: subject line (with A/B variant), preview text, full body copy (complete paragraphs, not bullet points), CTAs, and send timing. Write the actual email content word-for-word ready to paste into an email platform. Include personalization tokens and segmentation suggestions.",
     inputs: [
       { key: "product", label: "Product/Campaign", placeholder: "e.g., Launch sequence for a new SaaS product", type: "text", required: true },
       { key: "sequenceType", label: "Sequence Type", placeholder: "Select type", type: "select", options: ["Welcome Series", "Launch Sequence", "Nurture/Drip", "Re-engagement", "Abandoned Cart", "Post-Purchase", "Webinar Funnel"] },
@@ -262,7 +262,7 @@ export const tools: Tool[] = [
     description: "Write complete long-form sales page copy with proven conversion frameworks",
     category: "Marketing",
     icon: FileSpreadsheet,
-    prompt: "Write a complete long-form sales page using proven copywriting frameworks (AIDA, PAS, or Story-based). Include headline, subheadlines, problem agitation, solution presentation, benefits, social proof, objection handling, guarantee, pricing presentation, FAQ, and multiple CTAs.",
+    prompt: "Write a COMPLETE, FULL long-form sales page — every word of copy ready to publish. Use the specified copywriting framework. Write the actual headline, every subheadline, full problem agitation paragraphs, solution presentation, detailed benefit sections, social proof sections, objection-handling copy, guarantee section, pricing presentation, complete FAQ with answers, and multiple CTAs. Write it ALL out — no placeholders.",
     premium: true,
     inputs: [
       { key: "product", label: "Product/Offer Name", placeholder: "e.g., $497 coaching program for entrepreneurs", type: "text", required: true },
@@ -296,7 +296,7 @@ export const tools: Tool[] = [
     description: "Write engaging YouTube scripts with hooks, retention strategies, and CTAs",
     category: "Content Creation",
     icon: Youtube,
-    prompt: "Write a complete YouTube video script with a pattern-interrupt hook (first 5 seconds), intro, structured main content with retention loops, B-roll suggestions, CTA placements, and an end screen script.",
+    prompt: "Write a COMPLETE, word-for-word YouTube video script ready to read on camera. Include the exact spoken dialogue for every section: pattern-interrupt hook (first 5 seconds), intro, all main content sections with full narration written out, B-roll direction notes in [brackets], CTA placements, transitions between segments, and end screen script. Do NOT write bullet points — write the full script as spoken word.",
     inputs: [
       { key: "topic", label: "Video Topic", placeholder: "e.g., How I made $10K/month with AI tools", type: "text", required: true },
       { key: "duration", label: "Target Duration", placeholder: "Select duration", type: "select", options: ["Under 3 min (Short)", "5-8 min", "8-12 min", "12-20 min", "20+ min (Long-Form)"] },
@@ -356,7 +356,7 @@ export const tools: Tool[] = [
     description: "Write SEO-optimized blog posts with meta descriptions, headers, and internal linking",
     category: "Content Creation",
     icon: PenTool,
-    prompt: "Write a comprehensive, SEO-optimized blog post with a compelling title (H1), meta description, structured headers (H2/H3), keyword-rich content, internal/external linking suggestions, image alt text recommendations, and a conclusion with CTA.",
+    prompt: "Write a COMPLETE, FULL-LENGTH, SEO-optimized blog post — the entire article fully written out. Include a compelling title (H1), meta description, fully written sections under H2/H3 headers with rich detail, real examples, data points, internal/external linking suggestions, image alt text recommendations, and a conclusion with CTA. Write the FULL article at the requested word count — no shortcuts or summaries.",
     inputs: [
       { key: "topic", label: "Blog Topic", placeholder: "e.g., Best side hustles for 2025", type: "text", required: true },
       { key: "length", label: "Target Word Count", placeholder: "Select length", type: "select", options: ["800-1,200 (Short)", "1,200-2,000 (Medium)", "2,000-3,000 (Long)", "3,000+ (Pillar Content)"] },
@@ -470,7 +470,7 @@ export const tools: Tool[] = [
     description: "Create a structured business plan with financials, marketing, and operations",
     category: "Automation",
     icon: ClipboardList,
-    prompt: "Create a comprehensive business plan including executive summary, market analysis, competitive landscape, business model, marketing strategy, operations plan, financial projections (3-year), funding requirements, and risk assessment.",
+    prompt: "Write a COMPLETE, investor-ready business plan with every section fully written out. Include a polished executive summary, detailed market analysis with data, competitive landscape analysis, complete business model description, full marketing strategy with channels and budgets, operations plan, detailed 3-year financial projections with revenue/cost breakdowns, funding requirements with use-of-funds breakdown, and comprehensive risk assessment with mitigation strategies. No placeholders — write the actual plan.",
     premium: true,
     inputs: [
       { key: "idea", label: "Business Idea", placeholder: "e.g., Subscription box for plant lovers", type: "text", required: true },
