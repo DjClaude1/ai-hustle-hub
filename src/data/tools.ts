@@ -33,6 +33,7 @@ export interface Tool {
   prompt: string;
   inputs: ToolInput[];
   premium?: boolean;
+  isImageTool?: boolean;
 }
 
 export const categories: { name: ToolCategory; emoji: string }[] = [
@@ -119,6 +120,16 @@ export const tools: Tool[] = [
       { key: "platform", label: "Platform", placeholder: "Select platform", type: "select", options: ["GoodNotes", "Notability", "PDF (Universal)", "iPad Only", "Cross-Platform"] },
       { key: "sections", label: "Sections to Include", placeholder: "e.g., Meal planning, workout log, gratitude journal, financial tracker", type: "textarea" },
     ],
+  },
+  {
+    id: "ai-image-generator",
+    name: "AI Image Generator",
+    description: "Generate stunning AI images for covers, banners, ads & social media",
+    category: "Product Creation",
+    icon: ImageIcon,
+    prompt: "",
+    inputs: [],
+    isImageTool: true,
   },
 
   // ── Dropshipping ────────────────────────────────

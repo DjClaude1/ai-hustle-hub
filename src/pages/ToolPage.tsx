@@ -12,6 +12,7 @@ import {
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { SharePanel } from "@/components/SharePanel";
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate`;
 const PARSE_CV_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/parse-cv`;
@@ -675,6 +676,11 @@ const ToolPage = () => {
               {loading && output && <span className="inline-block w-1.5 h-4 bg-primary/60 animate-pulse ml-0.5 align-text-bottom rounded-sm" />}
             </div>
           </div>
+        )}
+
+        {/* Share to Social */}
+        {output && !loading && (
+          <SharePanel toolName={tool.name} category={tool.category} output={output} />
         )}
       </div>
     </div>
