@@ -8,6 +8,7 @@ import { Navbar } from "@/components/Navbar";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import ToolPage from "./pages/ToolPage";
+import ImageGeneratorPage from "./pages/ImageGeneratorPage";
 import Auth from "./pages/Auth";
 import HistoryPage from "./pages/HistoryPage";
 import NotFound from "./pages/NotFound";
