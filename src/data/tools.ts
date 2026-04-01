@@ -246,7 +246,7 @@ export const tools: Tool[] = [
     description: "Create complete email sequences with subject lines, body copy, and CTAs",
     category: "Marketing",
     icon: Mail,
-    prompt: "Create a complete email marketing sequence with compelling subject lines (with A/B variants), preview text, body copy, CTAs, and send timing recommendations. Include personalization tokens and segmentation suggestions.",
+    prompt: "Write a COMPLETE email marketing sequence with EVERY email fully written out. For each email include: subject line (with A/B variant), preview text, full body copy (complete paragraphs, not bullet points), CTAs, and send timing. Write the actual email content word-for-word ready to paste into an email platform. Include personalization tokens and segmentation suggestions.",
     inputs: [
       { key: "product", label: "Product/Campaign", placeholder: "e.g., Launch sequence for a new SaaS product", type: "text", required: true },
       { key: "sequenceType", label: "Sequence Type", placeholder: "Select type", type: "select", options: ["Welcome Series", "Launch Sequence", "Nurture/Drip", "Re-engagement", "Abandoned Cart", "Post-Purchase", "Webinar Funnel"] },
