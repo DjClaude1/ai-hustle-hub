@@ -68,7 +68,7 @@ export const tools: Tool[] = [
     description: "Create a comprehensive online course curriculum with modules, lessons, and assignments",
     category: "Product Creation",
     icon: GraduationCap,
-    prompt: "Generate a comprehensive online course curriculum including modules, individual lessons with descriptions, learning objectives, suggested assignments, and a recommended delivery timeline.",
+    prompt: "Create a COMPLETE online course with full lesson content written out — not just titles and descriptions. Write the actual teaching material for every lesson, complete assignment briefs, quiz questions with answers, project descriptions, and detailed scripts/talking points. Each module should have fully written lessons that an instructor can use directly.",
     inputs: [
       { key: "topic", label: "Course Topic", placeholder: "e.g., Digital Marketing Mastery for Small Businesses", type: "text", required: true },
       { key: "level", label: "Difficulty Level", placeholder: "Select level", type: "select", options: ["Beginner", "Intermediate", "Advanced", "All Levels"] },
