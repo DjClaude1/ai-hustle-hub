@@ -470,7 +470,7 @@ export const tools: Tool[] = [
     description: "Create a structured business plan with financials, marketing, and operations",
     category: "Automation",
     icon: ClipboardList,
-    prompt: "Create a comprehensive business plan including executive summary, market analysis, competitive landscape, business model, marketing strategy, operations plan, financial projections (3-year), funding requirements, and risk assessment.",
+    prompt: "Write a COMPLETE, investor-ready business plan with every section fully written out. Include a polished executive summary, detailed market analysis with data, competitive landscape analysis, complete business model description, full marketing strategy with channels and budgets, operations plan, detailed 3-year financial projections with revenue/cost breakdowns, funding requirements with use-of-funds breakdown, and comprehensive risk assessment with mitigation strategies. No placeholders — write the actual plan.",
     premium: true,
     inputs: [
       { key: "idea", label: "Business Idea", placeholder: "e.g., Subscription box for plant lovers", type: "text", required: true },
