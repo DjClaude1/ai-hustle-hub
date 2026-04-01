@@ -120,6 +120,16 @@ export const tools: Tool[] = [
       { key: "sections", label: "Sections to Include", placeholder: "e.g., Meal planning, workout log, gratitude journal, financial tracker", type: "textarea" },
     ],
   },
+  {
+    id: "ai-image-generator",
+    name: "AI Image Generator",
+    description: "Generate stunning AI images for covers, banners, ads & social media",
+    category: "Product Creation",
+    icon: ImageIcon,
+    prompt: "",
+    inputs: [],
+    isImageTool: true,
+  },
 
   // ── Dropshipping ────────────────────────────────
   {
