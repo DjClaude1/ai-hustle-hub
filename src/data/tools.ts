@@ -356,7 +356,7 @@ export const tools: Tool[] = [
     description: "Write SEO-optimized blog posts with meta descriptions, headers, and internal linking",
     category: "Content Creation",
     icon: PenTool,
-    prompt: "Write a comprehensive, SEO-optimized blog post with a compelling title (H1), meta description, structured headers (H2/H3), keyword-rich content, internal/external linking suggestions, image alt text recommendations, and a conclusion with CTA.",
+    prompt: "Write a COMPLETE, FULL-LENGTH, SEO-optimized blog post — the entire article fully written out. Include a compelling title (H1), meta description, fully written sections under H2/H3 headers with rich detail, real examples, data points, internal/external linking suggestions, image alt text recommendations, and a conclusion with CTA. Write the FULL article at the requested word count — no shortcuts or summaries.",
     inputs: [
       { key: "topic", label: "Blog Topic", placeholder: "e.g., Best side hustles for 2025", type: "text", required: true },
       { key: "length", label: "Target Word Count", placeholder: "Select length", type: "select", options: ["800-1,200 (Short)", "1,200-2,000 (Medium)", "2,000-3,000 (Long)", "3,000+ (Pillar Content)"] },
