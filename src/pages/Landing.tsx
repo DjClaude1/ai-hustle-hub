@@ -122,25 +122,26 @@ const Landing = () => {
       </section>
 
       {/* Pricing */}
-      <section className="py-24 bg-secondary/40">
-        <div className="container max-w-3xl">
+      <section id="pricing" className="py-24 bg-secondary/40">
+        <div className="container max-w-5xl">
           <ScrollReveal>
             <h2 className="text-center font-display text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-              Simple pricing
+              Simple, transparent pricing
             </h2>
             <p className="mx-auto mt-3 max-w-sm text-center text-muted-foreground">
-              Start free. Upgrade when you're ready.
+              Start free. Upgrade when you're ready to scale.
             </p>
           </ScrollReveal>
 
-          <div className="mt-14 grid gap-6 md:grid-cols-2">
+          <div className="mt-14 grid gap-6 md:grid-cols-3">
+            {/* Free */}
             <ScrollReveal delay={0}>
-              <div className="rounded-xl border border-border bg-card p-8 shadow-soft">
-                <h3 className="font-display text-lg font-semibold text-foreground">Free</h3>
+              <div className="rounded-xl border border-border bg-card p-8 shadow-soft h-full flex flex-col">
+                <h3 className="font-display text-lg font-semibold text-foreground">Starter</h3>
                 <p className="mt-1 text-sm text-muted-foreground">Get started, no commitment</p>
-                <p className="mt-6 font-display text-4xl font-bold text-foreground">$0<span className="text-base font-normal text-muted-foreground">/mo</span></p>
-                <ul className="mt-6 space-y-3 text-sm text-foreground">
-                  {["5 generations per day", "Access to all tools", "Copy & download results"].map((f) => (
+                <p className="mt-6 font-display text-4xl font-bold text-foreground">R0<span className="text-base font-normal text-muted-foreground">/mo</span></p>
+                <ul className="mt-6 space-y-3 text-sm text-foreground flex-1">
+                  {["5 generations per day", "Access to all basic tools", "3 resume templates", "Up to 15 eBook chapters", "Copy & download results"].map((f) => (
                     <li key={f} className="flex items-center gap-2.5">
                       <Check className="h-4 w-4 text-primary flex-shrink-0" /> {f}
                     </li>
@@ -152,20 +153,42 @@ const Landing = () => {
               </div>
             </ScrollReveal>
 
+            {/* Pro */}
             <ScrollReveal delay={100}>
-              <div className="relative rounded-xl border-2 border-primary bg-card p-8 shadow-card">
-                <div className="absolute -top-3 right-6 rounded-full bg-primary px-3 py-0.5 text-xs font-semibold text-primary-foreground">Recommended</div>
-                <h3 className="font-display text-lg font-semibold text-foreground">Premium</h3>
+              <div className="relative rounded-xl border-2 border-primary bg-card p-8 shadow-card h-full flex flex-col">
+                <div className="absolute -top-3 right-6 rounded-full bg-primary px-3 py-0.5 text-xs font-semibold text-primary-foreground">Most Popular</div>
+                <h3 className="font-display text-lg font-semibold text-foreground">Pro</h3>
                 <p className="mt-1 text-sm text-muted-foreground">For serious builders</p>
-                <p className="mt-6 font-display text-4xl font-bold text-foreground">$19<span className="text-base font-normal text-muted-foreground">/mo</span></p>
-                <ul className="mt-6 space-y-3 text-sm text-foreground">
-                  {["Unlimited generations", "Priority speed", "Advanced tools unlocked", "Save & organize history", "Early access to new tools"].map((f) => (
+                <p className="mt-6 font-display text-4xl font-bold text-foreground">R149<span className="text-base font-normal text-muted-foreground">/mo</span></p>
+                <ul className="mt-6 space-y-3 text-sm text-foreground flex-1">
+                  {["50 generations per day", "All premium tools unlocked", "All 10 resume templates", "Up to 50 eBook chapters", "Save & organize history", "Priority AI speed", "Social sharing tools"].map((f) => (
                     <li key={f} className="flex items-center gap-2.5">
                       <Check className="h-4 w-4 text-primary flex-shrink-0" /> {f}
                     </li>
                   ))}
                 </ul>
-                <Button variant="hero" className="mt-8 w-full">Upgrade to Premium</Button>
+                <Button variant="hero" className="mt-8 w-full" onClick={() => window.location.href = '/auth?plan=pro'}>
+                  Upgrade to Pro
+                </Button>
+              </div>
+            </ScrollReveal>
+
+            {/* Business */}
+            <ScrollReveal delay={200}>
+              <div className="rounded-xl border border-accent/30 bg-card p-8 shadow-soft h-full flex flex-col">
+                <h3 className="font-display text-lg font-semibold text-foreground">Business</h3>
+                <p className="mt-1 text-sm text-muted-foreground">For teams & agencies</p>
+                <p className="mt-6 font-display text-4xl font-bold text-foreground">R499<span className="text-base font-normal text-muted-foreground">/mo</span></p>
+                <ul className="mt-6 space-y-3 text-sm text-foreground flex-1">
+                  {["Unlimited generations", "Everything in Pro", "All 10 resume templates", "Unlimited eBook chapters", "Advanced analytics", "Priority support", "Early access to new tools", "Commercial usage license"].map((f) => (
+                    <li key={f} className="flex items-center gap-2.5">
+                      <Check className="h-4 w-4 text-accent flex-shrink-0" /> {f}
+                    </li>
+                  ))}
+                </ul>
+                <Button variant="accent" className="mt-8 w-full" onClick={() => window.location.href = '/auth?plan=business'}>
+                  Go Business
+                </Button>
               </div>
             </ScrollReveal>
           </div>
