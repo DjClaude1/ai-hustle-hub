@@ -2,20 +2,23 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { getToolById } from "@/data/tools";
 import type { ToolInput } from "@/data/tools";
+import { resumeTemplates, getTemplateById } from "@/data/resumeTemplates";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   ArrowLeft, Copy, Download, Loader2, Sparkles, Check,
   Upload, Save, History, Clock, Trash2, AlertTriangle,
-  Crown, FileText,
+  Crown, FileText, Lock,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSubscription } from "@/hooks/useSubscription";
 import { supabase } from "@/integrations/supabase/client";
 import { SharePanel } from "@/components/SharePanel";
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate`;
 const PARSE_CV_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/parse-cv`;
+const PAYFAST_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/payfast-payment`;
 
 /* ── Input Field ─────────────────────────────── */
 const ToolInputField = ({
@@ -70,7 +73,7 @@ const ToolInputField = ({
 };
 
 /* ── Usage Banner ────────────────────────────── */
-const UsageBanner = ({ remaining, isPremium }: { remaining: number | null; isPremium: boolean }) => {
+const UsageBanner = ({ remaining, isPremium, tier }: { remaining: number | null; isPremium: boolean; tier: string }) => {
   if (isPremium || remaining === null) return null;
   if (remaining > 2) return null;
 
@@ -83,13 +86,62 @@ const UsageBanner = ({ remaining, isPremium }: { remaining: number | null; isPre
       {remaining === 0 ? (
         <>
           <AlertTriangle className="h-4 w-4 shrink-0" />
-          <span>Daily limit reached. <Link to="/#pricing" className="font-semibold underline">Upgrade to Premium</Link> for unlimited generations.</span>
+          <span>Daily limit reached ({tier === "free" ? "5/day" : "50/day"}). <Link to="/#pricing" className="font-semibold underline">Upgrade your plan</Link> for more generations.</span>
         </>
       ) : (
         <>
           <Clock className="h-4 w-4 shrink-0" />
-          <span>{remaining} generation{remaining !== 1 ? "s" : ""} remaining today. <Link to="/#pricing" className="font-semibold underline">Go unlimited</Link></span>
+          <span>{remaining} generation{remaining !== 1 ? "s" : ""} remaining today. <Link to="/#pricing" className="font-semibold underline">Upgrade</Link></span>
         </>
+      )}
+    </div>
+  );
+};
+
+/* ── Template Selector ──────────────────────── */
+const TemplateSelector = ({
+  selected, onSelect, isPro,
+}: {
+  selected: string; onSelect: (id: string) => void; isPro: boolean;
+}) => {
+  return (
+    <div className="rounded-xl border border-border bg-card p-6 shadow-soft mb-4">
+      <h3 className="font-display text-sm font-semibold text-foreground mb-3">Choose Resume Template</h3>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {resumeTemplates.map((tmpl) => {
+          const locked = tmpl.premium && !isPro;
+          const isSelected = selected === tmpl.id;
+          return (
+            <button
+              key={tmpl.id}
+              onClick={() => !locked && onSelect(tmpl.id)}
+              disabled={locked}
+              className={`relative text-left rounded-lg border p-3 transition-all ${
+                isSelected
+                  ? "border-primary bg-primary/5 ring-2 ring-primary/20"
+                  : locked
+                  ? "border-border bg-muted/30 opacity-60 cursor-not-allowed"
+                  : "border-border hover:border-primary/30 hover:bg-secondary/50"
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-foreground">{tmpl.name}</span>
+                {locked && (
+                  <span className="flex items-center gap-1 text-xs text-accent">
+                    <Lock className="h-3 w-3" /> Pro
+                  </span>
+                )}
+                {isSelected && <Check className="h-4 w-4 text-primary" />}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">{tmpl.description}</p>
+            </button>
+          );
+        })}
+      </div>
+      {!isPro && (
+        <p className="mt-3 text-xs text-muted-foreground">
+          <Link to="/#pricing" className="text-primary hover:underline">Upgrade to Pro</Link> to unlock all 10 templates.
+        </p>
       )}
     </div>
   );
@@ -108,23 +160,18 @@ const CvUploadSection = ({
   const handleFile = async (file: File) => {
     if (!file) return;
     setParsing(true);
-
     try {
-      // Read file as text (for txt) or send to parser
       let cvText = "";
       if (file.type === "text/plain") {
         cvText = await file.text();
       } else {
-        // For PDF/DOCX, read as text (basic extraction)
         cvText = await file.text();
       }
-
       if (cvText.trim().length < 20) {
         toast.error("Could not read enough text from the file. Try pasting your CV text instead.");
         setParsing(false);
         return;
       }
-
       const resp = await fetch(PARSE_CV_URL, {
         method: "POST",
         headers: {
@@ -133,11 +180,7 @@ const CvUploadSection = ({
         },
         body: JSON.stringify({ cvText }),
       });
-
-      if (!resp.ok) {
-        throw new Error("Failed to parse CV");
-      }
-
+      if (!resp.ok) throw new Error("Failed to parse CV");
       const parsed = await resp.json();
       onParsed(parsed);
       toast.success("CV parsed! Fields have been filled in. Review and edit before generating.");
@@ -216,7 +259,7 @@ const HistoryPanel = ({
         <div className="mt-3 rounded-xl border border-border bg-card p-4 shadow-soft animate-fade-up">
           <h4 className="text-sm font-semibold text-foreground mb-3">Recent Generations</h4>
           {history.length === 0 ? (
-            <p className="text-xs text-muted-foreground">No history yet. Generate something to see it here.</p>
+            <p className="text-xs text-muted-foreground">No history yet.</p>
           ) : (
             <div className="space-y-2 max-h-64 overflow-y-auto">
               {history.map((item) => (
@@ -227,7 +270,7 @@ const HistoryPanel = ({
                     setOpen(false);
                     toast.success("Loaded from history");
                   }}
-                  className="w-full text-left rounded-lg border border-border p-3 hover:bg-secondary/50 transition-colors group"
+                  className="w-full text-left rounded-lg border border-border p-3 hover:bg-secondary/50 transition-colors"
                 >
                   <p className="text-xs text-muted-foreground">
                     {new Date(item.created_at).toLocaleDateString()} · {new Date(item.created_at).toLocaleTimeString()}
@@ -248,14 +291,15 @@ const ToolPage = () => {
   const { toolId } = useParams<{ toolId: string }>();
   const tool = getToolById(toolId || "");
   const { user, session } = useAuth();
+  const { tier, isPro, isAdmin, dailyLimit } = useSubscription();
   const navigate = useNavigate();
 
   const [inputValues, setInputValues] = useState<Record<string, string>>({});
+  const [selectedTemplate, setSelectedTemplate] = useState("classic-professional");
   const [output, setOutput] = useState("");
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [remaining, setRemaining] = useState<number | null>(null);
-  const [isPremium, setIsPremium] = useState(false);
   const [draftSaving, setDraftSaving] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -271,7 +315,9 @@ const ToolPage = () => {
         .eq("user_id", user.id)
         .maybeSingle();
       if (data?.inputs) {
-        setInputValues(data.inputs as Record<string, string>);
+        const inputs = data.inputs as Record<string, string>;
+        setInputValues(inputs);
+        if (inputs._template) setSelectedTemplate(inputs._template);
       }
     };
     loadDraft();
@@ -283,16 +329,16 @@ const ToolPage = () => {
     const loadProfile = async () => {
       const { data } = await supabase
         .from("profiles")
-        .select("generations_today, last_generation_date, is_premium")
+        .select("generations_today, last_generation_date, is_premium, subscription_tier")
         .eq("id", user.id)
         .single();
       if (data) {
-        setIsPremium(data.is_premium);
+        const limit = data.subscription_tier === "business" || data.is_premium ? 999999 : data.subscription_tier === "pro" ? 50 : 5;
         const today = new Date().toISOString().split("T")[0];
         if (data.last_generation_date === today) {
-          setRemaining(Math.max(0, 5 - data.generations_today));
+          setRemaining(Math.max(0, limit - data.generations_today));
         } else {
-          setRemaining(5);
+          setRemaining(limit);
         }
       }
     };
@@ -303,25 +349,29 @@ const ToolPage = () => {
   const saveDraft = useCallback(async (values: Record<string, string>) => {
     if (!user || !toolId) return;
     setDraftSaving(true);
-    const { error } = await supabase
+    await supabase
       .from("drafts")
       .upsert(
         { user_id: user.id, tool_id: toolId, inputs: values, updated_at: new Date().toISOString() },
         { onConflict: "user_id,tool_id" }
       );
-    if (error) console.error("Draft save error:", error);
     setDraftSaving(false);
   }, [user, toolId]);
 
   const setField = (key: string, val: string) => {
     const next = { ...inputValues, [key]: val };
     setInputValues(next);
-    // Debounced auto-save
     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
     autoSaveTimer.current = setTimeout(() => saveDraft(next), 2000);
   };
 
   const isResumeBuilder = toolId === "resume-builder" || toolId === "cover-letter";
+
+  // Check if eBook chapter selection requires pro
+  const isEbookChapterLocked = (val: string) => {
+    if (toolId !== "ebook-generator") return false;
+    return val.includes("(Pro)") && !isPro;
+  };
 
   if (!tool) {
     return (
@@ -334,10 +384,22 @@ const ToolPage = () => {
     );
   }
 
+  // Check premium tool access
+  const toolLocked = tool.premium && !isPro && !isAdmin;
+
   const buildUserInput = () => {
     const lines: string[] = [];
 
-    // Include personal details for resume/cover letter
+    // Add template info for resume builder
+    if (isResumeBuilder && selectedTemplate) {
+      const tmpl = getTemplateById(selectedTemplate);
+      if (tmpl) {
+        lines.push(`[Template Style: ${tmpl.name}]`);
+        lines.push(tmpl.promptAddon);
+        lines.push("");
+      }
+    }
+
     if (isResumeBuilder) {
       const personalFields = [
         ["fullName", "Full Name"], ["contactEmail", "Email"], ["phone", "Phone"],
@@ -368,8 +430,20 @@ const ToolPage = () => {
       return;
     }
 
-    if (!isPremium && remaining !== null && remaining <= 0) {
-      toast.error("Daily limit reached. Upgrade to Premium for unlimited generations.");
+    if (toolLocked) {
+      toast.error("This tool requires a Pro or Business plan.");
+      return;
+    }
+
+    if (!isAdmin && remaining !== null && remaining <= 0) {
+      toast.error("Daily limit reached. Upgrade your plan for more generations.");
+      return;
+    }
+
+    // Check eBook chapter pro lock
+    const chapterVal = inputValues["chapters"] || "";
+    if (isEbookChapterLocked(chapterVal)) {
+      toast.error("Chapters above 15 require a Pro plan. Upgrade to unlock more chapters.");
       return;
     }
 
@@ -460,16 +534,14 @@ const ToolPage = () => {
         }
       }
 
-      // Update remaining count
-      if (!isPremium && remaining !== null) setRemaining(Math.max(0, remaining - 1));
+      if (!isAdmin && remaining !== null) setRemaining(Math.max(0, remaining - 1));
 
-      // Save to history
       if (user && accumulated) {
         supabase.from("generations").insert({
           user_id: user.id,
           tool_id: tool.id,
           tool_name: tool.name,
-          inputs: inputValues,
+          inputs: { ...inputValues, _template: selectedTemplate },
           output: accumulated,
         }).then(({ error }) => {
           if (error) console.error("Save generation error:", error);
@@ -507,17 +579,9 @@ const ToolPage = () => {
 
   const handleCvParsed = (data: Record<string, string>) => {
     const mapping: Record<string, string> = {
-      role: "role",
-      experience: "experience",
-      skills: "skills",
-      education: "education",
-      fullName: "fullName",
-      email: "contactEmail",
-      phone: "phone",
-      location: "location",
-      linkedIn: "linkedIn",
-      portfolio: "portfolio",
-      summary: "summary",
+      role: "role", experience: "experience", skills: "skills", education: "education",
+      fullName: "fullName", email: "contactEmail", phone: "phone", location: "location",
+      linkedIn: "linkedIn", portfolio: "portfolio", summary: "summary",
     };
     const next = { ...inputValues };
     for (const [parsed, field] of Object.entries(mapping)) {
@@ -530,14 +594,45 @@ const ToolPage = () => {
   const handleLoadFromHistory = (histOutput: string, histInputs: Record<string, string>) => {
     setOutput(histOutput);
     setInputValues(histInputs);
+    if (histInputs._template) setSelectedTemplate(histInputs._template);
   };
 
   const handleClearDraft = async () => {
     setInputValues({});
+    setSelectedTemplate("classic-professional");
     if (user && toolId) {
       await supabase.from("drafts").delete().eq("user_id", user.id).eq("tool_id", toolId);
     }
     toast.success("Form cleared");
+  };
+
+  const handleUpgrade = async (upgradeTier: string) => {
+    if (!user || !session) {
+      navigate("/auth");
+      return;
+    }
+    try {
+      const resp = await fetch(PAYFAST_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          tier: upgradeTier,
+          returnUrl: window.location.origin + "/dashboard?payment=success",
+          cancelUrl: window.location.origin + "/dashboard?payment=cancelled",
+        }),
+      });
+      const data = await resp.json();
+      if (data.paymentUrl) {
+        window.location.href = data.paymentUrl;
+      } else {
+        toast.error(data.error || "Failed to create payment");
+      }
+    } catch {
+      toast.error("Payment initiation failed. Please try again.");
+    }
   };
 
   return (
@@ -566,8 +661,25 @@ const ToolPage = () => {
           )}
         </div>
 
+        {/* Tool locked paywall */}
+        {toolLocked && (
+          <div className="mb-4 rounded-xl border border-accent/30 bg-accent/5 p-6 text-center">
+            <Crown className="h-8 w-8 text-accent mx-auto mb-2" />
+            <h3 className="font-display text-lg font-semibold text-foreground">Pro Tool</h3>
+            <p className="text-sm text-muted-foreground mt-1 mb-4">This tool requires a Pro or Business plan.</p>
+            <div className="flex gap-3 justify-center">
+              <Button variant="hero" size="sm" onClick={() => handleUpgrade("pro")}>
+                Upgrade to Pro — R149/mo
+              </Button>
+              <Button variant="accent" size="sm" onClick={() => handleUpgrade("business")}>
+                Go Business — R499/mo
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Usage banner */}
-        <UsageBanner remaining={remaining} isPremium={isPremium} />
+        <UsageBanner remaining={remaining} isPremium={isPro || isAdmin} tier={tier} />
 
         {/* Action bar */}
         <div className="flex items-center gap-2 mb-4">
@@ -587,14 +699,26 @@ const ToolPage = () => {
           )}
         </div>
 
-        {/* CV Upload (for resume/cover letter tools) */}
+        {/* Template selector for resume builder */}
+        {toolId === "resume-builder" && (
+          <TemplateSelector
+            selected={selectedTemplate}
+            onSelect={(id) => {
+              setSelectedTemplate(id);
+              setField("_template", id);
+            }}
+            isPro={isPro || isAdmin}
+          />
+        )}
+
+        {/* CV Upload */}
         {isResumeBuilder && (
           <div className="mb-4">
             <CvUploadSection onParsed={handleCvParsed} loading={loading} />
           </div>
         )}
 
-        {/* Personal Details (for resume/cover letter) */}
+        {/* Personal Details */}
         {isResumeBuilder && (
           <div className="rounded-xl border border-border bg-card p-6 shadow-soft space-y-4 mb-4">
             <h3 className="font-display text-sm font-semibold text-foreground">Personal Details</h3>
@@ -642,11 +766,13 @@ const ToolPage = () => {
             variant="hero" size="lg"
             className="mt-2 w-full"
             onClick={handleGenerate}
-            disabled={loading || (!isPremium && remaining !== null && remaining <= 0)}
+            disabled={loading || toolLocked || (!isAdmin && !isPro && remaining !== null && remaining <= 0)}
           >
             {loading ? (
               <><Loader2 className="h-4 w-4 animate-spin" /> Generating...</>
-            ) : remaining !== null && remaining <= 0 && !isPremium ? (
+            ) : toolLocked ? (
+              <><Lock className="h-4 w-4" /> Upgrade to Use This Tool</>
+            ) : remaining !== null && remaining <= 0 && !isPro && !isAdmin ? (
               <><Crown className="h-4 w-4" /> Upgrade to Generate</>
             ) : (
               <><Sparkles className="h-4 w-4" /> Generate</>
