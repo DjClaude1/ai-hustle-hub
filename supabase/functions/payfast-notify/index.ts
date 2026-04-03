@@ -13,7 +13,6 @@ serve(async (req) => {
   }
 
   try {
-    // PayFast sends ITN as application/x-www-form-urlencoded
     const body = await req.text();
     const params = new URLSearchParams(body);
 
@@ -42,13 +41,17 @@ serve(async (req) => {
     const adminClient = createClient(supabaseUrl, serviceKey);
 
     // Record payment
-    await adminClient.from("payments").insert({
+    const { error: payError } = await adminClient.from("payments").insert({
       user_id: userId,
       payment_id: pfPaymentId || mPaymentId,
       status: paymentStatus || "unknown",
       amount: parseFloat(amountGross || "0"),
       tier: tier,
     });
+
+    if (payError) {
+      console.error("Failed to record payment:", payError);
+    }
 
     // If payment is complete, upgrade user
     if (paymentStatus === "COMPLETE") {
@@ -71,6 +74,6 @@ serve(async (req) => {
     return new Response("OK", { status: 200 });
   } catch (e) {
     console.error("PayFast notify error:", e);
-    return new Response("OK", { status: 200 }); // Always return 200 to PayFast
+    return new Response("OK", { status: 200 });
   }
 });
