@@ -14,6 +14,17 @@ const TIERS: Record<string, { name: string; amount: number }> = {
   business: { name: "Business Plan", amount: 49900 },
 };
 
+const encodePayfastValue = (value: string) =>
+  encodeURIComponent(value.trim()).replace(/%20/g, "+");
+
+const appendQueryParams = (url: string, params: Record<string, string>) => {
+  const parsedUrl = new URL(url);
+  Object.entries(params).forEach(([key, value]) => {
+    parsedUrl.searchParams.set(key, value);
+  });
+  return parsedUrl.toString();
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -32,6 +43,7 @@ serve(async (req) => {
     const authHeader = req.headers.get("Authorization");
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
     if (!authHeader || authHeader === `Bearer ${supabaseKey}`) {
       return new Response(
@@ -53,6 +65,8 @@ serve(async (req) => {
 
     const merchantId = Deno.env.get("PAYFAST_MERCHANT_ID");
     const merchantKey = Deno.env.get("PAYFAST_MERCHANT_KEY");
+    const passphrase = Deno.env.get("PAYFAST_PASSPHRASE")?.trim();
+    const sandboxMode = Deno.env.get("PAYFAST_SANDBOX") === "true";
 
     if (!merchantId || !merchantKey) {
       throw new Error("PayFast credentials not configured");
@@ -60,19 +74,52 @@ serve(async (req) => {
 
     const tierInfo = TIERS[tier];
     const amountInRands = (tierInfo.amount / 100).toFixed(2);
+    const paymentId = `${user.id}_${tier}_${Date.now()}`;
 
     const notifyUrl = `${supabaseUrl}/functions/v1/payfast-notify`;
+    const fallbackDashboardUrl = `${req.headers.get("origin") || "https://example.com"}/dashboard`;
+    const successUrl = appendQueryParams(returnUrl || fallbackDashboardUrl, {
+      payment: "processing",
+      paymentId,
+      tier,
+    });
+    const cancelledUrl = appendQueryParams(cancelUrl || fallbackDashboardUrl, {
+      payment: "cancelled",
+      paymentId,
+      tier,
+    });
+
+    const adminClient = createClient(supabaseUrl, serviceKey);
+
+    const { error: paymentInsertError } = await adminClient.from("payments").insert({
+      user_id: user.id,
+      payment_id: paymentId,
+      status: "pending",
+      amount: Number(amountInRands),
+      tier,
+    });
+
+    if (paymentInsertError) {
+      console.error("Failed to create pending payment:", paymentInsertError);
+      throw new Error("Failed to initialize payment");
+    }
+
+    const fullName = user.user_metadata?.full_name?.trim() || "User";
+    const nameParts = fullName.split(/\s+/).filter(Boolean);
+    const firstName = nameParts[0] || "User";
+    const lastName = nameParts.slice(1).join(" ");
 
     // Build PayFast data - order matters for signature
     const pfData: Record<string, string> = {
       merchant_id: merchantId,
       merchant_key: merchantKey,
-      return_url: returnUrl || `${supabaseUrl.replace('.supabase.co', '')}/dashboard?payment=success`,
-      cancel_url: cancelUrl || `${supabaseUrl.replace('.supabase.co', '')}/dashboard?payment=cancelled`,
+      return_url: successUrl,
+      cancel_url: cancelledUrl,
       notify_url: notifyUrl,
-      name_first: user.user_metadata?.full_name?.split(" ")[0] || "User",
+      name_first: firstName,
+      name_last: lastName,
       email_address: user.email || "",
-      m_payment_id: `${user.id}_${tier}_${Date.now()}`,
+      m_payment_id: paymentId,
       amount: amountInRands,
       item_name: `AI Hustle Studio - ${tierInfo.name}`,
       item_description: `Monthly subscription to ${tierInfo.name}`,
@@ -83,28 +130,28 @@ serve(async (req) => {
     // Generate MD5 signature using Deno std hash
     const paramString = Object.entries(pfData)
       .filter(([_, v]) => v !== "")
-      .map(([k, v]) => `${k}=${encodeURIComponent(v.trim()).replace(/%20/g, "+")}`)
+      .map(([k, v]) => `${k}=${encodePayfastValue(v)}`)
       .join("&");
+    const signaturePayload = passphrase ? `${paramString}&passphrase=${encodePayfastValue(passphrase)}` : paramString;
 
     const encoder = new TextEncoder();
-    const data = encoder.encode(paramString);
+    const data = encoder.encode(signaturePayload);
     const hashBuffer = await stdCrypto.subtle.digest("MD5", data);
     const signature = new TextDecoder().decode(hexEncode(new Uint8Array(hashBuffer)));
 
     pfData.signature = signature;
 
-    // Use sandbox for testing, live for production
-    const pfUrl = "https://sandbox.payfast.co.za/eng/process";
-    const queryString = Object.entries(pfData)
-      .map(([k, v]) => `${k}=${encodeURIComponent(v)}`)
-      .join("&");
+    const pfUrl = sandboxMode
+      ? "https://sandbox.payfast.co.za/eng/process"
+      : "https://www.payfast.co.za/eng/process";
 
     console.log("PayFast payment URL generated for user:", user.id, "tier:", tier);
 
     return new Response(
       JSON.stringify({
-        paymentUrl: `${pfUrl}?${queryString}`,
-        paymentId: pfData.m_payment_id,
+        checkoutUrl: pfUrl,
+        paymentData: pfData,
+        paymentId,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
