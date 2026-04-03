@@ -1,57 +1,113 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { categories, tools, type ToolCategory } from "@/data/tools";
 import { ScrollReveal } from "@/components/ScrollReveal";
-import { Lock, Crown, Check } from "lucide-react";
+import { Lock, Crown } from "lucide-react";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-
-const PAYFAST_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/payfast-payment`;
+import { supabase } from "@/integrations/supabase/client";
+import { createPayfastCheckout, submitPayfastCheckout } from "@/lib/payfast";
 
 const Dashboard = () => {
   const [activeCategory, setActiveCategory] = useState<ToolCategory | "All">("All");
   const filtered = activeCategory === "All" ? tools : tools.filter((t) => t.category === activeCategory);
-  const { tier, isPro, isAdmin, dailyLimit } = useSubscription();
+  const { tier, isPro, isAdmin } = useSubscription();
   const { user, session } = useAuth();
+  const handledUpgradeRef = useRef<string | null>(null);
 
-  // Check for payment result
-  const params = new URLSearchParams(window.location.search);
-  const paymentStatus = params.get("payment");
-  if (paymentStatus === "success") {
-    toast.success("Payment successful! Your plan is being activated.");
+  const searchParams = new URLSearchParams(window.location.search);
+  const paymentStatus = searchParams.get("payment");
+  const paymentId = searchParams.get("paymentId");
+  const requestedUpgrade = searchParams.get("upgrade");
+
+  const clearDashboardQuery = () => {
     window.history.replaceState({}, "", "/dashboard");
-  } else if (paymentStatus === "cancelled") {
-    toast.error("Payment was cancelled.");
-    window.history.replaceState({}, "", "/dashboard");
-  }
+  };
 
   const handleUpgrade = async (upgradeTier: string) => {
     if (!user || !session) return;
+
     try {
-      const resp = await fetch(PAYFAST_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-          tier: upgradeTier,
-          returnUrl: window.location.origin + "/dashboard?payment=success",
-          cancelUrl: window.location.origin + "/dashboard?payment=cancelled",
-        }),
+      const checkout = await createPayfastCheckout({
+        accessToken: session.access_token,
+        tier: upgradeTier,
+        returnUrl: `${window.location.origin}/dashboard`,
+        cancelUrl: `${window.location.origin}/dashboard`,
       });
-      const data = await resp.json();
-      if (data.paymentUrl) {
-        window.location.href = data.paymentUrl;
-      } else {
-        toast.error(data.error || "Failed to create payment");
-      }
-    } catch {
-      toast.error("Payment initiation failed.");
+
+      submitPayfastCheckout(checkout);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Payment initiation failed");
     }
   };
+
+  useEffect(() => {
+    if (!requestedUpgrade || !user || !session) return;
+    if (!["pro", "business"].includes(requestedUpgrade)) return;
+    if (handledUpgradeRef.current === requestedUpgrade) return;
+
+    handledUpgradeRef.current = requestedUpgrade;
+    clearDashboardQuery();
+    void handleUpgrade(requestedUpgrade);
+  }, [requestedUpgrade, session, user]);
+
+  useEffect(() => {
+    if (!paymentStatus) return;
+
+    if (paymentStatus === "cancelled") {
+      toast.error("Payment was cancelled.");
+      clearDashboardQuery();
+      return;
+    }
+
+    if (paymentStatus !== "processing" || !paymentId || !user) {
+      toast.message("Payment submitted. We’re confirming it now.");
+      clearDashboardQuery();
+      return;
+    }
+
+    let isActive = true;
+
+    const pollPayment = async () => {
+      toast.message("Payment submitted. We’re confirming it now.");
+
+      for (let attempt = 0; attempt < 10 && isActive; attempt += 1) {
+        const { data: payment } = await supabase
+          .from("payments")
+          .select("status, tier")
+          .eq("payment_id", paymentId)
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        if (payment?.status === "COMPLETE") {
+          toast.success(`Payment confirmed. Your ${payment.tier === "business" ? "Business" : "Pro"} plan is now active.`);
+          clearDashboardQuery();
+          return;
+        }
+
+        if (payment?.status && payment.status !== "pending") {
+          toast.error(`Payment could not be completed (${payment.status}).`);
+          clearDashboardQuery();
+          return;
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+      }
+
+      if (isActive) {
+        toast.message("We’re still waiting for payment confirmation. Your plan will update automatically once payment clears.");
+        clearDashboardQuery();
+      }
+    };
+
+    void pollPayment();
+
+    return () => {
+      isActive = false;
+    };
+  }, [paymentId, paymentStatus, user]);
 
   return (
     <div className="min-h-screen pt-20 pb-16 bg-background">
@@ -80,7 +136,6 @@ const Dashboard = () => {
           )}
         </div>
 
-        {/* Filters */}
         <div className="mb-8 flex flex-wrap gap-2">
           <button
             onClick={() => setActiveCategory("All")}
@@ -107,7 +162,6 @@ const Dashboard = () => {
           ))}
         </div>
 
-        {/* Tools Grid */}
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {filtered.map((tool, i) => {
             const locked = tool.premium && !isPro && !isAdmin;

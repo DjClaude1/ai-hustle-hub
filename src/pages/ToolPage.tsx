@@ -15,11 +15,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/hooks/useSubscription";
 import { supabase } from "@/integrations/supabase/client";
 import { SharePanel } from "@/components/SharePanel";
+import { createPayfastCheckout, submitPayfastCheckout } from "@/lib/payfast";
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate`;
 const PARSE_CV_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/parse-cv`;
-const PAYFAST_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/payfast-payment`;
-
 /* ── Input Field ─────────────────────────────── */
 const ToolInputField = ({
   input, value, onChange,
@@ -611,27 +610,18 @@ const ToolPage = () => {
       navigate("/auth");
       return;
     }
+
     try {
-      const resp = await fetch(PAYFAST_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-          tier: upgradeTier,
-          returnUrl: window.location.origin + "/dashboard?payment=success",
-          cancelUrl: window.location.origin + "/dashboard?payment=cancelled",
-        }),
+      const checkout = await createPayfastCheckout({
+        accessToken: session.access_token,
+        tier: upgradeTier,
+        returnUrl: `${window.location.origin}/dashboard`,
+        cancelUrl: `${window.location.origin}/dashboard`,
       });
-      const data = await resp.json();
-      if (data.paymentUrl) {
-        window.location.href = data.paymentUrl;
-      } else {
-        toast.error(data.error || "Failed to create payment");
-      }
-    } catch {
-      toast.error("Payment initiation failed. Please try again.");
+
+      submitPayfastCheckout(checkout);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Payment initiation failed. Please try again.");
     }
   };
 

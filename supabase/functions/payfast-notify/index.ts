@@ -40,17 +40,37 @@ serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const adminClient = createClient(supabaseUrl, serviceKey);
 
-    // Record payment
-    const { error: payError } = await adminClient.from("payments").insert({
-      user_id: userId,
-      payment_id: pfPaymentId || mPaymentId,
+    const paymentUpdate = {
       status: paymentStatus || "unknown",
       amount: parseFloat(amountGross || "0"),
       tier: tier,
-    });
+      updated_at: new Date().toISOString(),
+    };
 
-    if (payError) {
-      console.error("Failed to record payment:", payError);
+    const { data: updatedPayment, error: updateError } = await adminClient
+      .from("payments")
+      .update(paymentUpdate)
+      .eq("user_id", userId)
+      .eq("payment_id", mPaymentId)
+      .select("id")
+      .maybeSingle();
+
+    if (updateError) {
+      console.error("Failed to update payment:", updateError);
+    }
+
+    if (!updatedPayment) {
+      const { error: payInsertError } = await adminClient.from("payments").insert({
+        user_id: userId,
+        payment_id: mPaymentId,
+        status: paymentStatus || "unknown",
+        amount: parseFloat(amountGross || "0"),
+        tier: tier,
+      });
+
+      if (payInsertError) {
+        console.error("Failed to record payment:", payInsertError);
+      }
     }
 
     // If payment is complete, upgrade user

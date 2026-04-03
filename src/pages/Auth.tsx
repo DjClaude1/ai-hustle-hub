@@ -13,6 +13,10 @@ const Auth = () => {
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const requestedPlan = new URLSearchParams(window.location.search).get("plan");
+  const nextPath = requestedPlan && ["pro", "business"].includes(requestedPlan)
+    ? `/dashboard?upgrade=${requestedPlan}`
+    : "/dashboard";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,7 +35,7 @@ const Auth = () => {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         toast.success("Welcome back!");
-        navigate("/dashboard");
+        navigate(nextPath);
       } else {
         const { error } = await supabase.auth.signUp({
           email,
@@ -42,7 +46,7 @@ const Auth = () => {
           },
         });
         if (error) throw error;
-        toast.success("Check your email to confirm your account!");
+        toast.success(requestedPlan ? "Check your email to confirm your account, then sign in to continue with checkout." : "Check your email to confirm your account!");
       }
     } catch (err: any) {
       toast.error(err.message || "Authentication failed");
