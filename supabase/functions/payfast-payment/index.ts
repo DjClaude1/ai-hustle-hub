@@ -86,9 +86,10 @@ serve(async (req) => {
       .map(([k, v]) => `${k}=${encodeURIComponent(v.trim()).replace(/%20/g, "+")}`)
       .join("&");
 
-    const hash = createHash("md5");
-    hash.update(paramString);
-    const signature = hash.toString("hex");
+    const encoder = new TextEncoder();
+    const data = encoder.encode(paramString);
+    const hashBuffer = await stdCrypto.subtle.digest("MD5", data);
+    const signature = new TextDecoder().decode(hexEncode(new Uint8Array(hashBuffer)));
 
     pfData.signature = signature;
 
