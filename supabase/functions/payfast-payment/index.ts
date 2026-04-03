@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-import { encode as hexEncode } from "https://deno.land/std@0.168.0/encoding/hex.ts";
+import { createHash } from "https://deno.land/std@0.168.0/hash/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -9,8 +9,8 @@ const corsHeaders = {
 };
 
 const TIERS: Record<string, { name: string; amount: number }> = {
-  pro: { name: "Pro Plan", amount: 14900 }, // R149 in cents
-  business: { name: "Business Plan", amount: 49900 }, // R499 in cents
+  pro: { name: "Pro Plan", amount: 14900 },
+  business: { name: "Business Plan", amount: 49900 },
 };
 
 serve(async (req) => {
@@ -28,7 +28,6 @@ serve(async (req) => {
       );
     }
 
-    // Auth check
     const authHeader = req.headers.get("Authorization");
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -63,7 +62,7 @@ serve(async (req) => {
 
     const notifyUrl = `${supabaseUrl}/functions/v1/payfast-notify`;
 
-    // Build PayFast data
+    // Build PayFast data - order matters for signature
     const pfData: Record<string, string> = {
       merchant_id: merchantId,
       merchant_key: merchantKey,
@@ -76,34 +75,29 @@ serve(async (req) => {
       amount: amountInRands,
       item_name: `AI Hustle Studio - ${tierInfo.name}`,
       item_description: `Monthly subscription to ${tierInfo.name}`,
-      subscription_type: "1",
-      recurring_amount: amountInRands,
-      frequency: "3", // Monthly
-      cycles: "0", // Indefinite
       custom_str1: user.id,
       custom_str2: tier,
     };
 
-    // Generate signature
+    // Generate MD5 signature using Deno std hash
     const paramString = Object.entries(pfData)
       .filter(([_, v]) => v !== "")
       .map(([k, v]) => `${k}=${encodeURIComponent(v.trim()).replace(/%20/g, "+")}`)
       .join("&");
 
-    const encoder = new TextEncoder();
-    const data = encoder.encode(paramString);
-    const hashBuffer = await crypto.subtle.digest("MD5", data);
-    const signature = Array.from(new Uint8Array(hashBuffer))
-      .map(b => b.toString(16).padStart(2, "0"))
-      .join("");
+    const hash = createHash("md5");
+    hash.update(paramString);
+    const signature = hash.toString("hex");
 
     pfData.signature = signature;
 
-    // Build PayFast URL
-    const pfUrl = "https://www.payfast.co.za/eng/process";
+    // Use sandbox for testing, live for production
+    const pfUrl = "https://sandbox.payfast.co.za/eng/process";
     const queryString = Object.entries(pfData)
       .map(([k, v]) => `${k}=${encodeURIComponent(v)}`)
       .join("&");
+
+    console.log("PayFast payment URL generated for user:", user.id, "tier:", tier);
 
     return new Response(
       JSON.stringify({
