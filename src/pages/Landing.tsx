@@ -2,22 +2,23 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ScrollReveal } from "@/components/ScrollReveal";
 import { categories, tools } from "@/data/tools";
-import { ArrowRight, Zap, Sparkles, Rocket, Check, LayoutDashboard } from "lucide-react";
+import { ArrowRight, Zap, Sparkles, Rocket, Check, LayoutDashboard, Star, Shield, Clock, TrendingUp } from "lucide-react";
 
 const Landing = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Hero */}
-      <section className="relative pt-32 pb-24">
-        <div className="absolute inset-0 -z-10 overflow-hidden">
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 h-[600px] w-[900px] rounded-full bg-primary/[0.04] blur-[100px]" />
+      <section className="relative pt-32 pb-24 overflow-hidden">
+        <div className="absolute inset-0 -z-10">
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 h-[600px] w-[900px] rounded-full bg-primary/[0.06] blur-[120px]" />
+          <div className="absolute top-40 right-0 h-[300px] w-[400px] rounded-full bg-accent/[0.04] blur-[100px]" />
         </div>
 
         <div className="container max-w-3xl text-center">
           <div className="animate-fade-up">
             <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-1.5 text-sm text-muted-foreground shadow-soft">
               <Sparkles className="h-3.5 w-3.5 text-accent" />
-              29 AI-powered tools in one platform
+              29 AI-powered tools — one platform
             </div>
           </div>
 
@@ -25,22 +26,21 @@ const Landing = () => {
             className="animate-fade-up font-display text-4xl font-bold leading-[1.1] tracking-tight text-foreground sm:text-5xl lg:text-6xl"
             style={{ animationDelay: "80ms", lineHeight: "1.1" }}
           >
-            Build, launch & scale your side hustle with AI
+            Turn your ideas into <span className="text-gradient">income</span> with AI
           </h1>
 
           <p
             className="mx-auto mt-6 max-w-xl text-lg leading-relaxed text-muted-foreground opacity-0 animate-fade-up"
             style={{ animationDelay: "160ms" }}
           >
-            Create digital products, write marketing copy, research winning niches,
-            and automate your income — all from one dashboard.
+            Create eBooks, courses, marketing copy, professional resumes, and digital products — all powered by advanced AI. Start for free.
           </p>
 
           <div
             className="mt-10 flex flex-wrap items-center justify-center gap-3 opacity-0 animate-fade-up"
             style={{ animationDelay: "240ms" }}
           >
-            <Link to="/dashboard">
+            <Link to="/auth?mode=signup">
               <Button variant="hero" size="xl">
                 Start Free <ArrowRight className="ml-1 h-4 w-4" />
               </Button>
@@ -58,6 +58,29 @@ const Landing = () => {
           >
             <span className="flex items-center gap-1.5"><Check className="h-4 w-4 text-primary" /> No credit card</span>
             <span className="flex items-center gap-1.5"><Check className="h-4 w-4 text-primary" /> 5 free daily generations</span>
+            <span className="flex items-center gap-1.5"><Check className="h-4 w-4 text-primary" /> Full content, not outlines</span>
+          </div>
+        </div>
+      </section>
+
+      {/* Stats */}
+      <section className="py-12 border-y border-border bg-card/50">
+        <div className="container">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+            {[
+              { value: "29+", label: "AI Tools", icon: Zap },
+              { value: "6", label: "Categories", icon: Star },
+              { value: "10", label: "Resume Templates", icon: Shield },
+              { value: "50+", label: "eBook Chapters", icon: TrendingUp },
+            ].map((stat) => (
+              <ScrollReveal key={stat.label}>
+                <div className="flex flex-col items-center gap-2">
+                  <stat.icon className="h-5 w-5 text-primary" />
+                  <span className="font-display text-2xl font-bold text-foreground">{stat.value}</span>
+                  <span className="text-sm text-muted-foreground">{stat.label}</span>
+                </div>
+              </ScrollReveal>
+            ))}
           </div>
         </div>
       </section>
@@ -79,11 +102,11 @@ const Landing = () => {
               const count = tools.filter((t) => t.category === cat.name).length;
               return (
                 <ScrollReveal key={cat.name} delay={i * 70}>
-                  <div className="rounded-xl border border-border bg-card p-6 shadow-soft transition-all duration-300 hover:shadow-card hover:-translate-y-0.5">
+                  <Link to="/dashboard" className="block rounded-xl border border-border bg-card p-6 shadow-soft transition-all duration-300 hover:shadow-card hover:-translate-y-0.5">
                     <span className="text-2xl">{cat.emoji}</span>
                     <h3 className="mt-3 font-display text-base font-semibold text-foreground">{cat.name}</h3>
                     <p className="mt-1 text-sm text-muted-foreground">{count} tools available</p>
-                  </div>
+                  </Link>
                 </ScrollReveal>
               );
             })}
@@ -91,8 +114,44 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* How it Works */}
+      {/* Featured Tools */}
       <section className="py-24">
+        <div className="container">
+          <ScrollReveal>
+            <h2 className="text-center font-display text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+              Popular AI tools
+            </h2>
+            <p className="mx-auto mt-3 max-w-md text-center text-muted-foreground">
+              Production-ready content in seconds — not outlines or drafts.
+            </p>
+          </ScrollReveal>
+
+          <div className="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {tools.slice(0, 8).map((tool, i) => (
+              <ScrollReveal key={tool.id} delay={i * 60}>
+                <Link to={`/tool/${tool.id}`} className="group block rounded-xl border border-border bg-card p-5 shadow-soft transition-all duration-300 hover:shadow-card hover:-translate-y-0.5">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary group-hover:bg-primary/15 transition-colors">
+                    <tool.icon className="h-5 w-5" />
+                  </div>
+                  <h3 className="mt-3 font-display text-sm font-semibold text-foreground">{tool.name}</h3>
+                  <p className="mt-1 text-xs text-muted-foreground leading-relaxed line-clamp-2">{tool.description}</p>
+                </Link>
+              </ScrollReveal>
+            ))}
+          </div>
+
+          <div className="mt-10 text-center">
+            <Link to="/dashboard">
+              <Button variant="outline" size="lg">
+                View All 29 Tools <ArrowRight className="ml-1 h-4 w-4" />
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* How it Works */}
+      <section className="py-24 bg-secondary/40">
         <div className="container max-w-4xl">
           <ScrollReveal>
             <h2 className="text-center font-display text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
@@ -122,7 +181,7 @@ const Landing = () => {
       </section>
 
       {/* Pricing */}
-      <section id="pricing" className="py-24 bg-secondary/40">
+      <section id="pricing" className="py-24">
         <div className="container max-w-5xl">
           <ScrollReveal>
             <h2 className="text-center font-display text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
@@ -147,7 +206,7 @@ const Landing = () => {
                     </li>
                   ))}
                 </ul>
-                <Link to="/dashboard" className="mt-8 block">
+                <Link to="/auth?mode=signup" className="mt-8 block">
                   <Button variant="outline" className="w-full">Start Free</Button>
                 </Link>
               </div>
@@ -192,6 +251,40 @@ const Landing = () => {
               </div>
             </ScrollReveal>
           </div>
+        </div>
+      </section>
+
+      {/* Testimonial / Trust */}
+      <section className="py-16 bg-secondary/40">
+        <div className="container max-w-3xl text-center">
+          <ScrollReveal>
+            <div className="flex justify-center gap-1 mb-4">
+              {[1,2,3,4,5].map(i => <Star key={i} className="h-5 w-5 fill-accent text-accent" />)}
+            </div>
+            <blockquote className="font-display text-xl font-medium text-foreground italic">
+              "I created my entire eBook and course curriculum in one afternoon. The AI generates real, publishable content — not just outlines."
+            </blockquote>
+            <p className="mt-4 text-sm text-muted-foreground">— Digital Entrepreneur</p>
+          </ScrollReveal>
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="py-24">
+        <div className="container max-w-2xl text-center">
+          <ScrollReveal>
+            <h2 className="font-display text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+              Ready to start building?
+            </h2>
+            <p className="mt-4 text-muted-foreground">
+              Join thousands of creators using AI to build their income streams.
+            </p>
+            <Link to="/auth?mode=signup" className="mt-8 inline-block">
+              <Button variant="hero" size="xl">
+                Get Started Free <ArrowRight className="ml-1 h-4 w-4" />
+              </Button>
+            </Link>
+          </ScrollReveal>
         </div>
       </section>
 
