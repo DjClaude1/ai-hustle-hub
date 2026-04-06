@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { ToolCategory } from "@/data/tools";
+import { buildFallbackSocialCaption, isAiCreditsError } from "@/lib/aiFallbacks";
 
 const PLATFORMS = [
   { id: "twitter", label: "X / Twitter", icon: "𝕏", url: (txt: string, url: string) => `https://twitter.com/intent/tweet?text=${enc(txt)}&url=${enc(url)}` },
