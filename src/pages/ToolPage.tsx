@@ -156,21 +156,35 @@ const CvUploadSection = ({
   const [parsing, setParsing] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  const applyLocalFallback = (cvText: string, aiPaused = false) => {
+    const fallbackData = extractBasicCvData(cvText);
+    const hasDetectedData = Object.values(fallbackData).some(Boolean);
+
+    if (hasDetectedData) {
+      onParsed(fallbackData);
+      toast.success(
+        aiPaused
+          ? "AI CV parsing is paused, so we filled the details we could detect locally. Review and edit them below."
+          : "We filled the details we could detect locally. Review and edit them below.",
+      );
+    } else {
+      toast.error("We could not extract enough CV details automatically. Please paste or type them manually.");
+    }
+  };
+
   const handleFile = async (file: File) => {
     if (!file) return;
     setParsing(true);
+    let cvText = "";
+
     try {
-      let cvText = "";
-      if (file.type === "text/plain") {
-        cvText = await file.text();
-      } else {
-        cvText = await file.text();
-      }
+      cvText = await file.text();
       if (cvText.trim().length < 20) {
         toast.error("Could not read enough text from the file. Try pasting your CV text instead.");
         setParsing(false);
         return;
       }
+
       const resp = await fetch(PARSE_CV_URL, {
         method: "POST",
         headers: {
@@ -179,13 +193,27 @@ const CvUploadSection = ({
         },
         body: JSON.stringify({ cvText }),
       });
-      if (!resp.ok) throw new Error("Failed to parse CV");
+
+      if (resp.status === 402) {
+        applyLocalFallback(cvText, true);
+        return;
+      }
+
+      if (!resp.ok) {
+        applyLocalFallback(cvText);
+        return;
+      }
+
       const parsed = await resp.json();
       onParsed(parsed);
       toast.success("CV parsed! Fields have been filled in. Review and edit before generating.");
     } catch (e) {
       console.error("CV parse error:", e);
-      toast.error("Failed to parse CV. Try pasting your CV text manually.");
+      if (cvText) {
+        applyLocalFallback(cvText, isAiCreditsError(e));
+      } else {
+        toast.error("Failed to parse CV. Try pasting your CV text manually.");
+      }
     } finally {
       setParsing(false);
     }
@@ -458,6 +486,7 @@ const ToolPage = () => {
 
     setLoading(true);
     setOutput("");
+    setGenerationFallback(null);
 
     try {
       const userInput = buildUserInput();
@@ -473,11 +502,21 @@ const ToolPage = () => {
 
       if (!resp.ok) {
         const err = await resp.json().catch(() => ({ error: "Generation failed" }));
-        if (err.code === "LIMIT_REACHED" || resp.status === 429) {
+        if (err.code === "LIMIT_REACHED") {
           setRemaining(0);
           toast.error(err.error || "Daily limit reached.");
+        } else if (resp.status === 429) {
+          toast.error(err.error || "Too many requests right now. Please wait a moment and try again.");
         } else if (resp.status === 402) {
-          toast.error("AI credits exhausted. Please try again later.");
+          setGenerationFallback({
+            title: tool.name,
+            prompt: buildManualGenerationBrief({
+              toolName: tool.name,
+              toolPrompt: tool.prompt,
+              userInput,
+            }),
+          });
+          toast.error("AI is paused right now, so we prepared a full generation brief you can copy or download below.");
         } else {
           toast.error(err.error || "Something went wrong");
         }
@@ -566,13 +605,7 @@ const ToolPage = () => {
   };
 
   const handleDownload = () => {
-    const blob = new Blob([output], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${tool.id}-output.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadTextContent(output, `${tool.id}-output.txt`);
     toast.success("Downloaded!");
   };
 
@@ -591,12 +624,15 @@ const ToolPage = () => {
   };
 
   const handleLoadFromHistory = (histOutput: string, histInputs: Record<string, string>) => {
+    setGenerationFallback(null);
     setOutput(histOutput);
     setInputValues(histInputs);
     if (histInputs._template) setSelectedTemplate(histInputs._template);
   };
 
   const handleClearDraft = async () => {
+    setGenerationFallback(null);
+    setOutput("");
     setInputValues({});
     setSelectedTemplate("classic-professional");
     if (user && toolId) {
