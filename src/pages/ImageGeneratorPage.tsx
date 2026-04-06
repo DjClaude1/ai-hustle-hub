@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { buildOfflineImagePrompt, isAiCreditsError } from "@/lib/aiFallbacks";
 
 const GENERATE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-caption`;
 
@@ -80,8 +81,20 @@ const ImageGeneratorPage = () => {
         setPrompt(data.caption);
         toast.success("Prompt written!");
       }
-    } catch {
-      toast.error("AI prompt failed — type one manually.");
+    } catch (error) {
+      setPrompt(
+        buildOfflineImagePrompt({
+          context: useCase || prompt || "digital product artwork",
+          style: selStyle.label,
+          useCase: useCase || "general digital product",
+          negativePrompt: negPrompt,
+        }),
+      );
+      if (isAiCreditsError(error)) {
+        toast.success("AI prompt writing is paused, so we created a local prompt instead.");
+      } else {
+        toast.error("AI prompt failed — we created a local prompt instead.");
+      }
     }
   };
 

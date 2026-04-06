@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { ToolCategory } from "@/data/tools";
+import { buildFallbackSocialCaption, isAiCreditsError } from "@/lib/aiFallbacks";
 
 const PLATFORMS = [
   { id: "twitter", label: "X / Twitter", icon: "𝕏", url: (txt: string, url: string) => `https://twitter.com/intent/tweet?text=${enc(txt)}&url=${enc(url)}` },
@@ -60,8 +61,13 @@ export const SharePanel = ({ toolName, category, output }: SharePanelProps) => {
       });
       if (error) throw error;
       if (data?.caption) setCaption(data.caption);
-    } catch {
-      toast.error("Caption generation failed — type one manually.");
+    } catch (error) {
+      setCaption(buildFallbackSocialCaption({ toolName, output }));
+      if (isAiCreditsError(error)) {
+        toast.success("AI caption writing is paused, so we created a quick editable caption locally.");
+      } else {
+        toast.error("Caption generation failed — we created a quick editable caption instead.");
+      }
     } finally {
       setLoadingCap(false);
     }

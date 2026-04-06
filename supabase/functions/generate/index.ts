@@ -40,7 +40,6 @@ serve(async (req) => {
 
     // Check usage if user is authenticated
     if (userId) {
-      const adminClient = createClient(supabaseUrl, serviceKey);
       const { data: usageResult, error: usageError } = await adminClient.rpc(
         "check_and_increment_usage",
         { p_user_id: userId }
@@ -109,6 +108,7 @@ CRITICAL GUIDELINES — FOLLOW THESE WITHOUT EXCEPTION:
     );
 
     if (!response.ok) {
+      await rollbackUsageIncrement(userId);
       if (response.status === 429) {
         return new Response(
           JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }),
