@@ -16,9 +16,15 @@ import { useSubscription } from "@/hooks/useSubscription";
 import { supabase } from "@/integrations/supabase/client";
 import { SharePanel } from "@/components/SharePanel";
 import { createPayfastCheckout, submitPayfastCheckout } from "@/lib/payfast";
+import { buildManualGenerationBrief, extractBasicCvData, isAiCreditsError } from "@/lib/aiFallbacks";
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate`;
 const PARSE_CV_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/parse-cv`;
+
+type GenerationFallback = {
+  title: string;
+  prompt: string;
+};
 /* ── Input Field ─────────────────────────────── */
 const ToolInputField = ({
   input, value, onChange,
@@ -328,6 +334,7 @@ const ToolPage = () => {
   const [copied, setCopied] = useState(false);
   const [remaining, setRemaining] = useState<number | null>(null);
   const [draftSaving, setDraftSaving] = useState(false);
+  const [generationFallback, setGenerationFallback] = useState<GenerationFallback | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -826,6 +833,30 @@ const ToolPage = () => {
             <div className="rounded-lg border border-border bg-secondary/50 p-4 text-sm leading-relaxed text-foreground whitespace-pre-wrap">
               {output || (loading && <span className="text-muted-foreground animate-pulse">Generating…</span>)}
               {loading && output && <span className="inline-block w-1.5 h-4 bg-primary/60 animate-pulse ml-0.5 align-text-bottom rounded-sm" />}
+            </div>
+          </div>
+        )}
+
+        {generationFallback && !loading && (
+          <div className="mt-6 rounded-xl border border-accent/30 bg-accent/5 p-6 shadow-soft animate-fade-up">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h3 className="font-display text-sm font-semibold text-foreground">AI is paused — your brief is still ready</h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Built-in AI is temporarily unavailable, but your request has been turned into a complete generation brief you can copy or download and use elsewhere.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" size="sm" onClick={handleCopyGenerationBrief}>
+                  <Copy className="h-3.5 w-3.5" /> Copy brief
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleDownloadGenerationBrief}>
+                  <Download className="h-3.5 w-3.5" /> Download brief
+                </Button>
+              </div>
+            </div>
+            <div className="mt-4 rounded-lg border border-border bg-background p-4 text-sm leading-relaxed text-foreground whitespace-pre-wrap">
+              {generationFallback.prompt}
             </div>
           </div>
         )}

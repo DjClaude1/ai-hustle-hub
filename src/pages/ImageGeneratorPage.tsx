@@ -81,8 +81,20 @@ const ImageGeneratorPage = () => {
         setPrompt(data.caption);
         toast.success("Prompt written!");
       }
-    } catch {
-      toast.error("AI prompt failed — type one manually.");
+    } catch (error) {
+      setPrompt(
+        buildOfflineImagePrompt({
+          context: useCase || prompt || "digital product artwork",
+          style: selStyle.label,
+          useCase: useCase || "general digital product",
+          negativePrompt: negPrompt,
+        }),
+      );
+      if (isAiCreditsError(error)) {
+        toast.success("AI prompt writing is paused, so we created a local prompt instead.");
+      } else {
+        toast.error("AI prompt failed — we created a local prompt instead.");
+      }
     }
   };
 

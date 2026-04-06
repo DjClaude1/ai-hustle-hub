@@ -61,8 +61,13 @@ export const SharePanel = ({ toolName, category, output }: SharePanelProps) => {
       });
       if (error) throw error;
       if (data?.caption) setCaption(data.caption);
-    } catch {
-      toast.error("Caption generation failed — type one manually.");
+    } catch (error) {
+      setCaption(buildFallbackSocialCaption({ toolName, output }));
+      if (isAiCreditsError(error)) {
+        toast.success("AI caption writing is paused, so we created a quick editable caption locally.");
+      } else {
+        toast.error("Caption generation failed — we created a quick editable caption instead.");
+      }
     } finally {
       setLoadingCap(false);
     }
