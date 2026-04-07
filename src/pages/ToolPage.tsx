@@ -611,9 +611,33 @@ const ToolPage = () => {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const downloadTextContent = (content: string, filename: string) => {
+    const blob = new Blob([content], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const handleDownload = () => {
     downloadTextContent(output, `${tool.id}-output.txt`);
     toast.success("Downloaded!");
+  };
+
+  const handleCopyGenerationBrief = () => {
+    if (generationFallback) {
+      navigator.clipboard.writeText(generationFallback.prompt);
+      toast.success("Brief copied to clipboard");
+    }
+  };
+
+  const handleDownloadGenerationBrief = () => {
+    if (generationFallback) {
+      downloadTextContent(generationFallback.prompt, `${tool.id}-brief.txt`);
+      toast.success("Brief downloaded!");
+    }
   };
 
   const handleCvParsed = (data: Record<string, string>) => {
