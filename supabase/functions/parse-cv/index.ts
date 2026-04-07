@@ -12,16 +12,17 @@ interface ProviderConfig {
   model: string;
   getKey: () => string | undefined;
   timeout: number;
+  supportsTools: boolean;
 }
 
 const PROVIDERS: ProviderConfig[] = [
-  { name: "openai", url: "https://ai.gateway.lovable.dev/v1/chat/completions", model: "openai/gpt-5-mini", getKey: () => Deno.env.get("LOVABLE_API_KEY"), timeout: 10000 },
-  { name: "gemini", url: "https://ai.gateway.lovable.dev/v1/chat/completions", model: "google/gemini-3-flash-preview", getKey: () => Deno.env.get("LOVABLE_API_KEY"), timeout: 10000 },
-  { name: "together", url: "https://api.together.xyz/v1/chat/completions", model: "meta-llama/Llama-3.3-70B-Instruct-Turbo", getKey: () => Deno.env.get("TOGETHER_API_KEY"), timeout: 10000 },
-  { name: "groq", url: "https://api.groq.com/openai/v1/chat/completions", model: "llama-3.3-70b-versatile", getKey: () => Deno.env.get("GROQ_API_KEY"), timeout: 10000 },
+  { name: "openai", url: "https://ai.gateway.lovable.dev/v1/chat/completions", model: "openai/gpt-5-mini", getKey: () => Deno.env.get("LOVABLE_API_KEY"), timeout: 15000, supportsTools: true },
+  { name: "gemini", url: "https://ai.gateway.lovable.dev/v1/chat/completions", model: "google/gemini-2.5-flash", getKey: () => Deno.env.get("LOVABLE_API_KEY"), timeout: 15000, supportsTools: true },
+  { name: "together", url: "https://api.together.xyz/v1/chat/completions", model: "meta-llama/Llama-3.3-70B-Instruct-Turbo", getKey: () => Deno.env.get("TOGETHER_API_KEY"), timeout: 15000, supportsTools: false },
+  { name: "groq", url: "https://api.groq.com/openai/v1/chat/completions", model: "llama-3.3-70b-versatile", getKey: () => Deno.env.get("GROQ_API_KEY"), timeout: 15000, supportsTools: false },
 ];
 
-const CV_SYSTEM_PROMPT = `You are a CV/resume parser. Extract structured data from the provided CV text. Return ONLY a valid JSON object with these fields (use empty string if not found):
+const CV_SYSTEM_PROMPT = `You are a CV/resume parser. Extract structured data from the provided CV text. Return ONLY a valid JSON object with these fields (use empty string "" if not found):
 {
   "fullName": "",
   "email": "",
@@ -35,12 +36,14 @@ const CV_SYSTEM_PROMPT = `You are a CV/resume parser. Extract structured data fr
   "education": "",
   "summary": ""
 }
+Rules:
+- "fullName": the person's full name
 - "role": the most recent job title or target role
-- "experience": a summary of all work experience as plain text
+- "experience": a summary of ALL work experience as plain text, include company names, dates, and responsibilities
 - "skills": comma-separated list of skills
-- "education": education history as plain text
+- "education": education history as plain text including institution names and degrees
 - "summary": professional summary or objective if present
-Return ONLY the JSON, no markdown, no explanation.`;
+- Return ONLY the JSON object, no markdown fences, no explanation, no extra text.`;
 
 const CV_TOOL = {
   type: "function" as const,
@@ -67,16 +70,39 @@ const CV_TOOL = {
   },
 };
 
+const EXPECTED_KEYS = ["fullName", "email", "phone", "location", "linkedIn", "portfolio", "role", "experience", "skills", "education", "summary"];
+
+function looksLikeCvData(obj: Record<string, unknown>): boolean {
+  const matched = EXPECTED_KEYS.filter((k) => k in obj);
+  return matched.length >= 4;
+}
+
 function parseResponse(result: any): Record<string, string> | null {
+  // 1. Try tool call arguments
   const toolCall = result.choices?.[0]?.message?.tool_calls?.[0];
   if (toolCall?.function?.arguments) {
-    try { return JSON.parse(toolCall.function.arguments); } catch { /* fall through */ }
+    try {
+      const parsed = JSON.parse(toolCall.function.arguments);
+      if (looksLikeCvData(parsed)) return parsed;
+    } catch { /* fall through */ }
   }
+
+  // 2. Try content as JSON (for providers that don't use tools)
   const content = result.choices?.[0]?.message?.content || "";
-  const jsonMatch = content.match(/\{[\s\S]*\}/);
+  
+  // Strip markdown code fences if present
+  const cleaned = content.replace(/```(?:json)?\s*/gi, "").replace(/```\s*/g, "").trim();
+  
+  // Find JSON object
+  const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
   if (jsonMatch) {
-    try { return JSON.parse(jsonMatch[0]); } catch { /* fall through */ }
+    try {
+      const parsed = JSON.parse(jsonMatch[0]);
+      if (looksLikeCvData(parsed)) return parsed;
+    } catch { /* fall through */ }
   }
+
+  console.error("[parse-cv] Could not extract JSON from content:", content.slice(0, 300));
   return null;
 }
 
@@ -89,6 +115,9 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "CV text is too short to parse" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    // Truncate very long CVs to avoid token limits
+    const trimmedCv = cvText.length > 8000 ? cvText.slice(0, 8000) : cvText;
+
     for (const p of PROVIDERS) {
       const key = p.getKey();
       if (!key) continue;
@@ -99,10 +128,15 @@ serve(async (req) => {
 
         const body: any = {
           model: p.model,
-          messages: [{ role: "system", content: CV_SYSTEM_PROMPT }, { role: "user", content: cvText }],
+          messages: [
+            { role: "system", content: CV_SYSTEM_PROMPT },
+            { role: "user", content: `Parse this CV and return the JSON:\n\n${trimmedCv}` },
+          ],
+          temperature: 0.1,
         };
-        // Tool calling works best with OpenAI-compatible APIs
-        if (p.name === "openai" || p.name === "gemini" || p.name === "together") {
+
+        // Only use tool calling for providers that support it well
+        if (p.supportsTools) {
           body.tools = [CV_TOOL];
           body.tool_choice = { type: "function", function: { name: "extract_cv_data" } };
         }
@@ -123,7 +157,13 @@ serve(async (req) => {
         const result = await resp.json();
         const parsed = parseResponse(result);
         if (parsed) {
-          return new Response(JSON.stringify({ ...parsed, _provider: p.name }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          // Normalize: ensure all expected keys exist
+          const normalized: Record<string, string> = {};
+          for (const k of EXPECTED_KEYS) {
+            normalized[k] = typeof parsed[k] === "string" ? parsed[k] : "";
+          }
+          normalized._provider = p.name;
+          return new Response(JSON.stringify(normalized), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
         console.error(`[parse-cv][${p.name}] could not parse response`);
       } catch (e) {
