@@ -160,37 +160,18 @@ const CvUploadSection = ({
   loading: boolean;
 }) => {
   const [parsing, setParsing] = useState(false);
+  const [showPaste, setShowPaste] = useState(false);
+  const [pasteText, setPasteText] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const applyLocalFallback = (cvText: string, aiPaused = false) => {
-    const fallbackData = extractBasicCvData(cvText);
-    const hasDetectedData = Object.values(fallbackData).some(Boolean);
-
-    if (hasDetectedData) {
-      onParsed(fallbackData);
-      toast.success(
-        aiPaused
-          ? "AI CV parsing is paused, so we filled the details we could detect locally. Review and edit them below."
-          : "We filled the details we could detect locally. Review and edit them below.",
-      );
-    } else {
-      toast.error("We could not extract enough CV details automatically. Please paste or type them manually.");
+  const parseCvText = async (cvText: string) => {
+    if (cvText.trim().length < 20) {
+      toast.error("Text is too short. Please provide more CV content.");
+      return;
     }
-  };
 
-  const handleFile = async (file: File) => {
-    if (!file) return;
     setParsing(true);
-    let cvText = "";
-
     try {
-      cvText = await file.text();
-      if (cvText.trim().length < 20) {
-        toast.error("Could not read enough text from the file. Try pasting your CV text instead.");
-        setParsing(false);
-        return;
-      }
-
       const resp = await fetch(PARSE_CV_URL, {
         method: "POST",
         headers: {
@@ -200,51 +181,116 @@ const CvUploadSection = ({
         body: JSON.stringify({ cvText }),
       });
 
-      if (resp.status === 402) {
-        applyLocalFallback(cvText, true);
+      if (resp.ok) {
+        const parsed = await resp.json();
+        onParsed(parsed);
+        toast.success("CV parsed successfully! Review the filled fields below.");
+        setShowPaste(false);
+        setPasteText("");
         return;
       }
 
-      if (!resp.ok) {
-        applyLocalFallback(cvText);
-        return;
+      // AI unavailable — use local fallback
+      const fallbackData = extractBasicCvData(cvText);
+      const hasData = Object.values(fallbackData).some(Boolean);
+      if (hasData) {
+        onParsed(fallbackData);
+        toast.success(
+          resp.status === 402
+            ? "AI parsing is paused — we extracted what we could locally. Review below."
+            : "We extracted basic details. Review and complete them below."
+        );
+        setShowPaste(false);
+        setPasteText("");
+      } else {
+        toast.error("Could not extract details. Please fill in the fields manually.");
       }
-
-      const parsed = await resp.json();
-      onParsed(parsed);
-      toast.success("CV parsed! Fields have been filled in. Review and edit before generating.");
     } catch (e) {
       console.error("CV parse error:", e);
-      if (cvText) {
-        applyLocalFallback(cvText, isAiCreditsError(e));
+      const fallbackData = extractBasicCvData(cvText);
+      const hasData = Object.values(fallbackData).some(Boolean);
+      if (hasData) {
+        onParsed(fallbackData);
+        toast.success("Extracted basic details locally. Review and edit below.");
+        setShowPaste(false);
+        setPasteText("");
       } else {
-        toast.error("Failed to parse CV. Try pasting your CV text manually.");
+        toast.error("Failed to parse CV. Please fill in the fields manually.");
       }
     } finally {
       setParsing(false);
     }
   };
 
+  const handleFile = async (file: File) => {
+    if (!file) return;
+    const ext = file.name.split(".").pop()?.toLowerCase();
+
+    if (ext === "pdf" || ext === "doc" || ext === "docx") {
+      toast.info("For best results with PDF/DOCX files, copy-paste your CV text using the paste option below.");
+      setShowPaste(true);
+      return;
+    }
+
+    const cvText = await file.text();
+    await parseCvText(cvText);
+  };
+
   return (
-    <div className="rounded-lg border border-dashed border-primary/30 bg-primary/5 p-4">
+    <div className="rounded-xl border border-dashed border-primary/30 bg-primary/5 p-4 space-y-3">
       <div className="flex items-center gap-3">
-        <Upload className="h-5 w-5 text-primary" />
+        <Upload className="h-5 w-5 text-primary shrink-0" />
         <div className="flex-1">
-          <p className="text-sm font-medium text-foreground">Upload your existing CV</p>
-          <p className="text-xs text-muted-foreground">Upload a .txt file to auto-fill the fields below</p>
+          <p className="text-sm font-medium text-foreground">Import your existing CV</p>
+          <p className="text-xs text-muted-foreground">Upload a .txt file or paste your CV text to auto-fill fields</p>
         </div>
-        <Button
-          variant="outline" size="sm"
-          onClick={() => fileRef.current?.click()}
-          disabled={parsing || loading}
-        >
-          {parsing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}
-          {parsing ? "Parsing..." : "Upload CV"}
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline" size="sm"
+            onClick={() => setShowPaste(!showPaste)}
+            disabled={parsing || loading}
+          >
+            <FileText className="h-3.5 w-3.5" />
+            {showPaste ? "Hide" : "Paste Text"}
+          </Button>
+          <Button
+            variant="outline" size="sm"
+            onClick={() => fileRef.current?.click()}
+            disabled={parsing || loading}
+          >
+            {parsing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+            {parsing ? "Parsing..." : "Upload .txt"}
+          </Button>
+        </div>
       </div>
+
+      {showPaste && (
+        <div className="space-y-2 animate-fade-up">
+          <textarea
+            value={pasteText}
+            onChange={(e) => setPasteText(e.target.value)}
+            placeholder="Paste your full CV / resume text here…"
+            rows={6}
+            className="w-full rounded-lg border border-border bg-background p-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all resize-none"
+          />
+          <Button
+            variant="hero" size="sm"
+            onClick={() => parseCvText(pasteText)}
+            disabled={parsing || pasteText.trim().length < 20}
+            className="w-full"
+          >
+            {parsing ? (
+              <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Parsing CV...</>
+            ) : (
+              <><Sparkles className="h-3.5 w-3.5" /> Parse &amp; Auto-Fill</>
+            )}
+          </Button>
+        </div>
+      )}
+
       <input
         ref={fileRef} type="file" className="hidden"
-        accept=".txt,.pdf,.doc,.docx"
+        accept=".txt"
         onChange={(e) => {
           const f = e.target.files?.[0];
           if (f) handleFile(f);
