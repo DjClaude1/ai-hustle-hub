@@ -199,7 +199,7 @@ export const tools: Tool[] = [
     category: "Dropshipping",
     icon: BarChart3,
     prompt: "Perform a deep competitor analysis including SWOT analysis, pricing strategy comparison, product range assessment, marketing channel analysis, customer sentiment insights, and actionable opportunities to differentiate.",
-    premium: true,
+    // premium removed: now free for all
     inputs: [
       { key: "competitor", label: "Competitor Store/Brand", placeholder: "e.g., Shopify stores selling pet accessories", type: "text", required: true },
       { key: "yourStore", label: "Your Store/Brand (if exists)", placeholder: "e.g., PawPerfect.com", type: "text" },
@@ -263,7 +263,7 @@ export const tools: Tool[] = [
     category: "Marketing",
     icon: FileSpreadsheet,
     prompt: "Write a COMPLETE, FULL long-form sales page — every word of copy ready to publish. Use the specified copywriting framework. Write the actual headline, every subheadline, full problem agitation paragraphs, solution presentation, detailed benefit sections, social proof sections, objection-handling copy, guarantee section, pricing presentation, complete FAQ with answers, and multiple CTAs. Write it ALL out — no placeholders.",
-    premium: true,
+    // premium removed: now free for all
     inputs: [
       { key: "product", label: "Product/Offer Name", placeholder: "e.g., $497 coaching program for entrepreneurs", type: "text", required: true },
       { key: "price", label: "Price Point", placeholder: "e.g., $497 one-time or $97/month", type: "text", required: true },
@@ -471,7 +471,7 @@ export const tools: Tool[] = [
     category: "Automation",
     icon: ClipboardList,
     prompt: "Write a COMPLETE, investor-ready business plan with every section fully written out. Include a polished executive summary, detailed market analysis with data, competitive landscape analysis, complete business model description, full marketing strategy with channels and budgets, operations plan, detailed 3-year financial projections with revenue/cost breakdowns, funding requirements with use-of-funds breakdown, and comprehensive risk assessment with mitigation strategies. No placeholders — write the actual plan.",
-    premium: true,
+    // premium removed: now free for all
     inputs: [
       { key: "idea", label: "Business Idea", placeholder: "e.g., Subscription box for plant lovers", type: "text", required: true },
       { key: "stage", label: "Business Stage", placeholder: "Select stage", type: "select", options: ["Just an Idea", "Validated Concept", "Early Revenue", "Growing Business", "Seeking Funding"] },
