@@ -18,6 +18,34 @@ import { SharePanel } from "@/components/SharePanel";
 import { createPayfastCheckout, submitPayfastCheckout } from "@/lib/payfast";
 import { buildManualGenerationBrief, extractBasicCvData, isAiCreditsError } from "@/lib/aiFallbacks";
 
+// Lazy-load pdfjs only when needed
+const extractPdfText = async (file: File): Promise<string> => {
+  const pdfjs: any = await import("pdfjs-dist/build/pdf.mjs");
+  // Use a CDN worker URL matching installed version to avoid bundler config
+  pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+  const buf = await file.arrayBuffer();
+  const pdf = await pdfjs.getDocument({ data: buf }).promise;
+  let fullText = "";
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    const strings = content.items.map((it: any) => ("str" in it ? it.str : "")).filter(Boolean);
+    fullText += strings.join(" ") + "\n\n";
+  }
+  return fullText.trim();
+};
+
+const extractDocxText = async (file: File): Promise<string> => {
+  // Best-effort DOCX text extraction without external libs.
+  // DOCX is a zip; raw decoding will produce noise but readable runs survive.
+  const buf = await file.arrayBuffer();
+  const raw = new TextDecoder("utf-8", { fatal: false }).decode(buf);
+  // Pull out runs of printable ASCII / common punctuation that look like sentences
+  const matches = raw.match(/[A-Za-z][A-Za-z0-9 ,.\-_/@:&'()+]{8,}/g);
+  if (!matches) return "";
+  return matches.join(" ").replace(/\s+/g, " ").trim();
+};
+
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate`;
 const PARSE_CV_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/parse-cv`;
 
@@ -226,14 +254,40 @@ const CvUploadSection = ({
     if (!file) return;
     const ext = file.name.split(".").pop()?.toLowerCase();
 
-    if (ext === "pdf" || ext === "doc" || ext === "docx") {
-      toast.info("For best results with PDF/DOCX files, copy-paste your CV text using the paste option below.");
+    setParsing(true);
+    try {
+      let cvText = "";
+      if (ext === "pdf") {
+        toast.message("Reading PDF…");
+        cvText = await extractPdfText(file);
+        if (cvText.length < 30) {
+          toast.error("This PDF appears to be a scanned image. Please paste the text instead.");
+          setShowPaste(true);
+          return;
+        }
+      } else if (ext === "docx" || ext === "doc") {
+        toast.message("Reading document…");
+        cvText = await extractDocxText(file);
+        if (cvText.length < 30) {
+          toast.error("Could not read the Word document. Please paste the text instead.");
+          setShowPaste(true);
+          return;
+        }
+      } else if (ext === "txt" || ext === "md") {
+        cvText = await file.text();
+      } else {
+        toast.error("Unsupported file type. Use PDF, DOCX, or TXT — or paste your CV text.");
+        setShowPaste(true);
+        return;
+      }
+      await parseCvText(cvText);
+    } catch (e) {
+      console.error("File read error:", e);
+      toast.error("Could not read the file. Try pasting your CV text instead.");
       setShowPaste(true);
-      return;
+    } finally {
+      setParsing(false);
     }
-
-    const cvText = await file.text();
-    await parseCvText(cvText);
   };
 
   return (
@@ -242,7 +296,7 @@ const CvUploadSection = ({
         <Upload className="h-5 w-5 text-primary shrink-0" />
         <div className="flex-1">
           <p className="text-sm font-medium text-foreground">Import your existing CV</p>
-          <p className="text-xs text-muted-foreground">Upload a .txt file or paste your CV text to auto-fill fields</p>
+          <p className="text-xs text-muted-foreground">Upload PDF, DOCX or TXT — or paste text to auto-fill fields</p>
         </div>
         <div className="flex gap-2">
           <Button
@@ -259,7 +313,7 @@ const CvUploadSection = ({
             disabled={parsing || loading}
           >
             {parsing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-            {parsing ? "Parsing..." : "Upload .txt"}
+            {parsing ? "Reading..." : "Upload File"}
           </Button>
         </div>
       </div>
@@ -290,10 +344,12 @@ const CvUploadSection = ({
 
       <input
         ref={fileRef} type="file" className="hidden"
-        accept=".txt"
+        accept=".pdf,.doc,.docx,.txt,.md"
         onChange={(e) => {
           const f = e.target.files?.[0];
           if (f) handleFile(f);
+          // reset so re-uploading the same file fires onChange
+          if (fileRef.current) fileRef.current.value = "";
         }}
       />
     </div>

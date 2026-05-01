@@ -197,10 +197,17 @@ const Landing = () => {
             <ScrollReveal delay={0}>
               <div className="rounded-xl border border-border bg-card p-8 shadow-soft h-full flex flex-col">
                 <h3 className="font-display text-lg font-semibold text-foreground">Starter</h3>
-                <p className="mt-1 text-sm text-muted-foreground">Get started, no commitment</p>
+                <p className="mt-1 text-sm text-muted-foreground">Try every tool, free forever</p>
                 <p className="mt-6 font-display text-4xl font-bold text-foreground">R0<span className="text-base font-normal text-muted-foreground">/mo</span></p>
                 <ul className="mt-6 space-y-3 text-sm text-foreground flex-1">
-                  {["5 generations per day", "Access to all basic tools", "3 resume templates", "Up to 15 eBook chapters", "Copy & download results"].map((f) => (
+                  {[
+                    "5 generations per day",
+                    "Access to all 29 AI tools",
+                    "3 resume templates",
+                    "Up to 25 eBook chapters",
+                    "PDF / DOCX CV import",
+                    "Copy & download results",
+                  ].map((f) => (
                     <li key={f} className="flex items-center gap-2.5">
                       <Check className="h-4 w-4 text-primary flex-shrink-0" /> {f}
                     </li>
@@ -217,10 +224,18 @@ const Landing = () => {
               <div className="relative rounded-xl border-2 border-primary bg-card p-8 shadow-card h-full flex flex-col">
                 <div className="absolute -top-3 right-6 rounded-full bg-primary px-3 py-0.5 text-xs font-semibold text-primary-foreground">Most Popular</div>
                 <h3 className="font-display text-lg font-semibold text-foreground">Pro</h3>
-                <p className="mt-1 text-sm text-muted-foreground">For serious builders</p>
+                <p className="mt-1 text-sm text-muted-foreground">For creators shipping every week</p>
                 <p className="mt-6 font-display text-4xl font-bold text-foreground">R149<span className="text-base font-normal text-muted-foreground">/mo</span></p>
                 <ul className="mt-6 space-y-3 text-sm text-foreground flex-1">
-                  {["50 generations per day", "All premium tools unlocked", "All 10 resume templates", "Up to 50 eBook chapters", "Save & organize history", "Priority AI speed", "Social sharing tools"].map((f) => (
+                  {[
+                    "50 generations per day",
+                    "Everything in Starter",
+                    "All 10 resume templates",
+                    "Up to 50 eBook chapters",
+                    "Save & organize history",
+                    "Priority AI speed",
+                    "Social sharing tools",
+                  ].map((f) => (
                     <li key={f} className="flex items-center gap-2.5">
                       <Check className="h-4 w-4 text-primary flex-shrink-0" /> {f}
                     </li>
@@ -236,10 +251,18 @@ const Landing = () => {
             <ScrollReveal delay={200}>
               <div className="rounded-xl border border-accent/30 bg-card p-8 shadow-soft h-full flex flex-col">
                 <h3 className="font-display text-lg font-semibold text-foreground">Business</h3>
-                <p className="mt-1 text-sm text-muted-foreground">For teams & agencies</p>
+                <p className="mt-1 text-sm text-muted-foreground">For teams & agencies at scale</p>
                 <p className="mt-6 font-display text-4xl font-bold text-foreground">R499<span className="text-base font-normal text-muted-foreground">/mo</span></p>
                 <ul className="mt-6 space-y-3 text-sm text-foreground flex-1">
-                  {["Unlimited generations", "Everything in Pro", "All 10 resume templates", "Unlimited eBook chapters", "Advanced analytics", "Priority support", "Early access to new tools", "Commercial usage license"].map((f) => (
+                  {[
+                    "Unlimited generations",
+                    "Everything in Pro",
+                    "Unlimited eBook chapters",
+                    "Advanced analytics",
+                    "Priority support",
+                    "Early access to new tools",
+                    "Commercial usage license",
+                  ].map((f) => (
                     <li key={f} className="flex items-center gap-2.5">
                       <Check className="h-4 w-4 text-accent flex-shrink-0" /> {f}
                     </li>
