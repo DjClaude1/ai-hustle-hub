@@ -18,6 +18,33 @@ import { SharePanel } from "@/components/SharePanel";
 import { createPayfastCheckout, submitPayfastCheckout } from "@/lib/payfast";
 import { buildManualGenerationBrief, extractBasicCvData, isAiCreditsError } from "@/lib/aiFallbacks";
 
+// Lazy-load pdfjs only when needed
+const extractPdfText = async (file: File): Promise<string> => {
+  const pdfjs: any = await import("pdfjs-dist/build/pdf.mjs");
+  // Use a CDN worker URL matching installed version to avoid bundler config
+  pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+  const buf = await file.arrayBuffer();
+  const pdf = await pdfjs.getDocument({ data: buf }).promise;
+  let fullText = "";
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    const strings = content.items.map((it: any) => ("str" in it ? it.str : "")).filter(Boolean);
+    fullText += strings.join(" ") + "\n\n";
+  }
+  return fullText.trim();
+};
+
+const extractDocxText = async (file: File): Promise<string> => {
+  // DOCX is a zip; we attempt naive text extraction by stripping XML tags from document.xml
+  const buf = await file.arrayBuffer();
+  const text = new TextDecoder("utf-8", { fatal: false }).decode(buf);
+  // Extract any readable runs of text between XML tags
+  const matches = text.match(/>([^<>{8,}]+)</g);
+  if (!matches) return "";
+  return matches.map((m) => m.slice(1, -1)).join(" ").replace(/\s+/g, " ").trim();
+};
+
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate`;
 const PARSE_CV_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/parse-cv`;
 
