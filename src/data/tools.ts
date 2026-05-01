@@ -57,7 +57,7 @@ export const tools: Tool[] = [
     inputs: [
       { key: "topic", label: "eBook Topic", placeholder: "e.g., How to Start a Profitable Online Business in 2025", type: "text", required: true },
       { key: "audience", label: "Target Audience", placeholder: "e.g., Aspiring entrepreneurs aged 25-40", type: "text", required: true },
-      { key: "chapters", label: "Number of Chapters", placeholder: "Select chapter count", type: "select", options: ["5", "7", "10", "12", "15", "20 (Pro)", "25 (Pro)", "30 (Pro)", "40 (Pro)", "50 (Pro)"] },
+      { key: "chapters", label: "Number of Chapters", placeholder: "Select chapter count", type: "select", options: ["5", "7", "10", "12", "15", "20", "25", "30 (Pro)", "40 (Pro)", "50 (Pro)"] },
       { key: "tone", label: "Writing Tone", placeholder: "Select tone", type: "select", options: ["Professional", "Conversational", "Motivational", "Academic", "Storytelling"] },
       { key: "extras", label: "Special Requests", placeholder: "e.g., Include case studies, add actionable exercises at the end of each chapter", type: "textarea" },
     ],
