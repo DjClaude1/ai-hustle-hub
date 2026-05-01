@@ -36,13 +36,14 @@ const extractPdfText = async (file: File): Promise<string> => {
 };
 
 const extractDocxText = async (file: File): Promise<string> => {
-  // DOCX is a zip; we attempt naive text extraction by stripping XML tags from document.xml
+  // Best-effort DOCX text extraction without external libs.
+  // DOCX is a zip; raw decoding will produce noise but readable runs survive.
   const buf = await file.arrayBuffer();
-  const text = new TextDecoder("utf-8", { fatal: false }).decode(buf);
-  // Extract any readable runs of text between XML tags
-  const matches = text.match(/>([^<>{8,}]+)</g);
+  const raw = new TextDecoder("utf-8", { fatal: false }).decode(buf);
+  // Pull out runs of printable ASCII / common punctuation that look like sentences
+  const matches = raw.match(/[A-Za-z][A-Za-z0-9 ,.\-_/@:&'()+]{8,}/g);
   if (!matches) return "";
-  return matches.map((m) => m.slice(1, -1)).join(" ").replace(/\s+/g, " ").trim();
+  return matches.join(" ").replace(/\s+/g, " ").trim();
 };
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate`;
