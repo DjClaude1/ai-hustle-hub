@@ -15,6 +15,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/hooks/useSubscription";
 import { supabase } from "@/integrations/supabase/client";
 import { SharePanel } from "@/components/SharePanel";
+import { ProductPreview } from "@/components/ProductPreview";
 import { createPayfastCheckout, submitPayfastCheckout } from "@/lib/payfast";
 import { buildManualGenerationBrief, extractBasicCvData, isAiCreditsError } from "@/lib/aiFallbacks";
 
@@ -956,10 +957,25 @@ const ToolPage = () => {
                 </div>
               )}
             </div>
-            <div className="rounded-lg border border-border bg-secondary/50 p-4 text-sm leading-relaxed text-foreground whitespace-pre-wrap">
-              {output || (loading && <span className="text-muted-foreground animate-pulse">Generating…</span>)}
-              {loading && output && <span className="inline-block w-1.5 h-4 bg-primary/60 animate-pulse ml-0.5 align-text-bottom rounded-sm" />}
-            </div>
+            {output ? (
+              <ProductPreview
+                toolId={tool.id}
+                category={tool.category}
+                toolName={tool.name}
+                output={output}
+                inputs={inputValues}
+              />
+            ) : (
+              <div className="rounded-lg border border-border bg-secondary/50 p-6 text-sm text-foreground">
+                <span className="text-muted-foreground animate-pulse">Generating your {tool.name.toLowerCase()}…</span>
+              </div>
+            )}
+            {loading && output && (
+              <div className="mt-2 text-xs text-muted-foreground flex items-center gap-1.5">
+                <span className="inline-block w-1.5 h-3 bg-primary/60 animate-pulse rounded-sm" />
+                Streaming…
+              </div>
+            )}
           </div>
         )}
 
