@@ -941,7 +941,7 @@ const ToolPage = () => {
         </div>
 
         {/* Output */}
-        {(output || loading) && (
+        {(output || loading || tool.id === "resume-builder") && (
           <div className="mt-6 rounded-xl border border-border bg-card p-6 shadow-soft animate-fade-up">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="font-display text-sm font-semibold text-foreground">Output</h3>
