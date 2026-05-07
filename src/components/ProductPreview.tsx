@@ -416,8 +416,9 @@ const renderForTool = (
   toolName: string,
   output: string,
   inputs?: Record<string, string>,
+  templateId?: string,
 ) => {
-  if (toolId === "resume-builder") return <PaperSheet output={output} label="Resume" />;
+  if (toolId === "resume-builder") return <ResumeTemplateRender templateId={templateId} output={output} />;
   if (toolId === "cover-letter") return <PaperSheet output={output} label="Cover Letter" />;
   if (["ebook-generator", "pdf-guide-creator", "course-generator", "business-plan", "notion-template-generator", "digital-planner-generator"].includes(toolId)) {
     return <BookPages output={output} title={toolName} />;
