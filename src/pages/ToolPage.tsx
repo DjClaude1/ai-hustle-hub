@@ -941,10 +941,10 @@ const ToolPage = () => {
         </div>
 
         {/* Output */}
-        {(output || loading) && (
+        {(output || loading || tool.id === "resume-builder") && (
           <div className="mt-6 rounded-xl border border-border bg-card p-6 shadow-soft animate-fade-up">
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="font-display text-sm font-semibold text-foreground">Output</h3>
+              <h3 className="font-display text-sm font-semibold text-foreground">{output ? "Output" : tool.id === "resume-builder" ? "Live Template Preview" : "Output"}</h3>
               {output && !loading && (
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm" onClick={handleCopy}>
@@ -964,6 +964,16 @@ const ToolPage = () => {
                 toolName={tool.name}
                 output={output}
                 inputs={inputValues}
+                templateId={selectedTemplate}
+              />
+            ) : tool.id === "resume-builder" ? (
+              <ProductPreview
+                toolId={tool.id}
+                category={tool.category}
+                toolName={tool.name}
+                output={`# ${inputValues.name || "Your Name"}\n\n${inputValues.email || "your.email@example.com"} · ${inputValues.phone || "+1 (555) 000-0000"} · ${inputValues.location || "City, Country"}\n\n## Professional Summary\n\n${inputValues.summary || "A short professional summary will appear here once you generate your resume. The styling, fonts, colors, and layout you see now reflect the selected template."}\n\n## Experience\n\n### ${inputValues.jobTitle || "Most Recent Role"} — ${inputValues.company || "Company Name"}\n*Date Range · Location*\n\n- Achievement bullet showcasing impact and metrics.\n- Another achievement highlighting leadership and results.\n- Third bullet demonstrating relevant skills and outcomes.\n\n## Education\n\n### ${inputValues.degree || "Degree"} — ${inputValues.school || "Institution"}\n\n## Skills\n\n- **Core:** ${inputValues.skills || "Skill 1, Skill 2, Skill 3, Skill 4"}\n- **Tools:** Add your tools and technologies here\n`}
+                inputs={inputValues}
+                templateId={selectedTemplate}
               />
             ) : (
               <div className="rounded-lg border border-border bg-secondary/50 p-6 text-sm text-foreground">

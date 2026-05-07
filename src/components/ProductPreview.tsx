@@ -5,6 +5,7 @@ import {
   FileText, BookOpen, Mail, Globe, Film, Megaphone,
   Briefcase, ShoppingBag, Tag, Eye, Code2,
 } from "lucide-react";
+import { ResumeTemplateRender } from "@/components/resumeTemplateStyles";
 
 interface ProductPreviewProps {
   toolId: string;
@@ -12,6 +13,7 @@ interface ProductPreviewProps {
   toolName: string;
   output: string;
   inputs?: Record<string, string>;
+  templateId?: string;
 }
 
 type PreviewMode = "preview" | "raw";
@@ -414,8 +416,9 @@ const renderForTool = (
   toolName: string,
   output: string,
   inputs?: Record<string, string>,
+  templateId?: string,
 ) => {
-  if (toolId === "resume-builder") return <PaperSheet output={output} label="Resume" />;
+  if (toolId === "resume-builder") return <ResumeTemplateRender templateId={templateId} output={output} />;
   if (toolId === "cover-letter") return <PaperSheet output={output} label="Cover Letter" />;
   if (["ebook-generator", "pdf-guide-creator", "course-generator", "business-plan", "notion-template-generator", "digital-planner-generator"].includes(toolId)) {
     return <BookPages output={output} title={toolName} />;
@@ -454,7 +457,7 @@ const previewLabel = (toolId: string) => {
   return "Live Preview";
 };
 
-export const ProductPreview = ({ toolId, category, toolName, output, inputs }: ProductPreviewProps) => {
+export const ProductPreview = ({ toolId, category, toolName, output, inputs, templateId }: ProductPreviewProps) => {
   const [mode, setMode] = useState<PreviewMode>("preview");
 
   return (
@@ -490,7 +493,7 @@ export const ProductPreview = ({ toolId, category, toolName, output, inputs }: P
       {/* Content */}
       {mode === "preview" ? (
         <div className="rounded-xl border border-border bg-secondary/20 p-4 sm:p-6 overflow-x-auto">
-          {renderForTool(toolId, category, toolName, output, inputs)}
+          {renderForTool(toolId, category, toolName, output, inputs, templateId)}
         </div>
       ) : (
         <div className="rounded-lg border border-border bg-secondary/50 p-4 text-sm leading-relaxed text-foreground whitespace-pre-wrap font-mono max-h-[600px] overflow-y-auto">
