@@ -944,7 +944,7 @@ const ToolPage = () => {
         {(output || loading || tool.id === "resume-builder") && (
           <div className="mt-6 rounded-xl border border-border bg-card p-6 shadow-soft animate-fade-up">
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="font-display text-sm font-semibold text-foreground">Output</h3>
+              <h3 className="font-display text-sm font-semibold text-foreground">{output ? "Output" : tool.id === "resume-builder" ? "Live Template Preview" : "Output"}</h3>
               {output && !loading && (
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm" onClick={handleCopy}>
