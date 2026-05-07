@@ -5,6 +5,7 @@ import {
   FileText, BookOpen, Mail, Globe, Film, Megaphone,
   Briefcase, ShoppingBag, Tag, Eye, Code2,
 } from "lucide-react";
+import { ResumeTemplateRender } from "@/components/resumeTemplateStyles";
 
 interface ProductPreviewProps {
   toolId: string;
@@ -12,6 +13,7 @@ interface ProductPreviewProps {
   toolName: string;
   output: string;
   inputs?: Record<string, string>;
+  templateId?: string;
 }
 
 type PreviewMode = "preview" | "raw";
