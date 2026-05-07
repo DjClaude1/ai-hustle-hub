@@ -457,7 +457,7 @@ const previewLabel = (toolId: string) => {
   return "Live Preview";
 };
 
-export const ProductPreview = ({ toolId, category, toolName, output, inputs }: ProductPreviewProps) => {
+export const ProductPreview = ({ toolId, category, toolName, output, inputs, templateId }: ProductPreviewProps) => {
   const [mode, setMode] = useState<PreviewMode>("preview");
 
   return (
@@ -493,7 +493,7 @@ export const ProductPreview = ({ toolId, category, toolName, output, inputs }: P
       {/* Content */}
       {mode === "preview" ? (
         <div className="rounded-xl border border-border bg-secondary/20 p-4 sm:p-6 overflow-x-auto">
-          {renderForTool(toolId, category, toolName, output, inputs)}
+          {renderForTool(toolId, category, toolName, output, inputs, templateId)}
         </div>
       ) : (
         <div className="rounded-lg border border-border bg-secondary/50 p-4 text-sm leading-relaxed text-foreground whitespace-pre-wrap font-mono max-h-[600px] overflow-y-auto">
