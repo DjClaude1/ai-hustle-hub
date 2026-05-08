@@ -73,8 +73,11 @@ export type Database = {
           amount: number
           created_at: string
           id: string
+          metadata: Json
           payment_id: string | null
+          provider: string
           status: string
+          subscription_id: string | null
           tier: string
           updated_at: string
           user_id: string
@@ -83,8 +86,11 @@ export type Database = {
           amount: number
           created_at?: string
           id?: string
+          metadata?: Json
           payment_id?: string | null
+          provider?: string
           status?: string
+          subscription_id?: string | null
           tier: string
           updated_at?: string
           user_id: string
@@ -93,11 +99,47 @@ export type Database = {
           amount?: number
           created_at?: string
           id?: string
+          metadata?: Json
           payment_id?: string | null
+          provider?: string
           status?: string
+          subscription_id?: string | null
           tier?: string
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      paypal_plans: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          id: string
+          plan_id: string
+          product_id: string
+          tier: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          currency?: string
+          id?: string
+          plan_id: string
+          product_id: string
+          tier: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          id?: string
+          plan_id?: string
+          product_id?: string
+          tier?: string
+          updated_at?: string
         }
         Relationships: []
       }
