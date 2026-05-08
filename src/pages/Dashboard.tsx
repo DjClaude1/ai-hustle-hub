@@ -8,7 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { createPayfastCheckout, submitPayfastCheckout } from "@/lib/payfast";
+
 
 const Dashboard = () => {
   const [activeCategory, setActiveCategory] = useState<ToolCategory | "All">("All");
@@ -18,9 +18,9 @@ const Dashboard = () => {
   const handledUpgradeRef = useRef<string | null>(null);
 
   const searchParams = new URLSearchParams(window.location.search);
-  const paymentStatus = searchParams.get("payment");
-  const paymentId = searchParams.get("paymentId");
   const requestedUpgrade = searchParams.get("upgrade");
+  const paypalSubId = searchParams.get("subscription_id");
+  const paypalCancel = searchParams.get("paypal") === "cancelled";
 
   const clearDashboardQuery = () => {
     window.history.replaceState({}, "", "/dashboard");
@@ -28,16 +28,17 @@ const Dashboard = () => {
 
   const handleUpgrade = async (upgradeTier: string) => {
     if (!user || !session) return;
-
     try {
-      const checkout = await createPayfastCheckout({
-        accessToken: session.access_token,
-        tier: upgradeTier,
-        returnUrl: `${window.location.origin}/dashboard`,
-        cancelUrl: `${window.location.origin}/dashboard`,
+      const { data, error } = await supabase.functions.invoke("paypal-create-subscription", {
+        body: {
+          tier: upgradeTier,
+          returnUrl: `${window.location.origin}/dashboard`,
+          cancelUrl: `${window.location.origin}/dashboard?paypal=cancelled`,
+        },
       });
-
-      submitPayfastCheckout(checkout);
+      if (error) throw error;
+      if (!data?.approveUrl) throw new Error("No PayPal approval URL returned");
+      window.location.href = data.approveUrl;
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Payment initiation failed");
     }
@@ -47,67 +48,34 @@ const Dashboard = () => {
     if (!requestedUpgrade || !user || !session) return;
     if (!["pro", "business"].includes(requestedUpgrade)) return;
     if (handledUpgradeRef.current === requestedUpgrade) return;
-
     handledUpgradeRef.current = requestedUpgrade;
     clearDashboardQuery();
     void handleUpgrade(requestedUpgrade);
   }, [requestedUpgrade, session, user]);
 
   useEffect(() => {
-    if (!paymentStatus) return;
-
-    if (paymentStatus === "cancelled") {
+    if (paypalCancel) {
       toast.error("Payment was cancelled.");
       clearDashboardQuery();
       return;
     }
-
-    if (paymentStatus !== "processing" || !paymentId || !user) {
-      toast.message("Payment submitted. We’re confirming it now.");
+    if (!paypalSubId || !user) return;
+    (async () => {
+      toast.message("Confirming your PayPal subscription…");
+      const { data, error } = await supabase.functions.invoke("paypal-verify-subscription", {
+        body: { subscriptionId: paypalSubId },
+      });
+      if (error) {
+        toast.error("Could not verify subscription. It will activate automatically once PayPal confirms.");
+      } else if (data?.active) {
+        toast.success(`Welcome to ${data.tier === "business" ? "Business" : "Pro"}! Your plan is active.`);
+        setTimeout(() => window.location.reload(), 1500);
+      } else {
+        toast.message("Subscription pending PayPal approval. It will activate shortly.");
+      }
       clearDashboardQuery();
-      return;
-    }
-
-    let isActive = true;
-
-    const pollPayment = async () => {
-      toast.message("Payment submitted. We’re confirming it now.");
-
-      for (let attempt = 0; attempt < 10 && isActive; attempt += 1) {
-        const { data: payment } = await supabase
-          .from("payments")
-          .select("status, tier")
-          .eq("payment_id", paymentId)
-          .eq("user_id", user.id)
-          .maybeSingle();
-
-        if (payment?.status === "COMPLETE") {
-          toast.success(`Payment confirmed. Your ${payment.tier === "business" ? "Business" : "Pro"} plan is now active.`);
-          clearDashboardQuery();
-          return;
-        }
-
-        if (payment?.status && payment.status !== "pending") {
-          toast.error(`Payment could not be completed (${payment.status}).`);
-          clearDashboardQuery();
-          return;
-        }
-
-        await new Promise((resolve) => setTimeout(resolve, 3000));
-      }
-
-      if (isActive) {
-        toast.message("We’re still waiting for payment confirmation. Your plan will update automatically once payment clears.");
-        clearDashboardQuery();
-      }
-    };
-
-    void pollPayment();
-
-    return () => {
-      isActive = false;
-    };
-  }, [paymentId, paymentStatus, user]);
+    })();
+  }, [paypalSubId, paypalCancel, user]);
 
   return (
     <div className="min-h-screen pt-20 pb-16 bg-background">
