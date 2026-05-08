@@ -37,11 +37,20 @@ const Auth = () => {
     try {
       if (isLogin) {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
+        if (error) {
+          if (error.message?.toLowerCase().includes("invalid login")) {
+            toast.error("Wrong email or password. If you just signed up, try again — your account is now active.");
+          } else if (error.message?.toLowerCase().includes("email not confirmed")) {
+            toast.error("Please confirm your email, then sign in again.");
+          } else {
+            toast.error(error.message);
+          }
+          return;
+        }
         toast.success("Welcome back!");
         navigate(nextPath);
       } else {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -49,8 +58,23 @@ const Auth = () => {
             emailRedirectTo: window.location.origin,
           },
         });
-        if (error) throw error;
-        toast.success(requestedPlan ? "Check your email to confirm your account, then sign in to continue with checkout." : "Check your email to confirm your account!");
+        if (error) {
+          if (error.message?.toLowerCase().includes("already registered") || error.message?.toLowerCase().includes("already exists")) {
+            toast.error("Account already exists — switching to sign in.");
+            setIsLogin(true);
+            return;
+          }
+          toast.error(error.message);
+          return;
+        }
+        // Auto-confirm is enabled, so session should exist immediately
+        if (data.session) {
+          toast.success("Account created! Welcome.");
+          navigate(nextPath);
+        } else {
+          toast.success("Account created! You can now sign in.");
+          setIsLogin(true);
+        }
       }
     } catch (err: any) {
       toast.error(err.message || "Authentication failed");
