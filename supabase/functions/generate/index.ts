@@ -136,6 +136,22 @@ async function rollbackUsageIncrement(userId: string | null) {
   }
 }
 
+/* ── Tool → required plan (mirrors src/lib/plans.ts) ── */
+const FREE_TOOLS = new Set([
+  "business-name", "store-name", "tiktok-hook", "thumbnail-text",
+  "side-hustle-idea", "ad-copy", "fiverr-gig",
+]);
+const PRO_TOOLS = new Set([
+  "competitor-analyzer", "business-plan", "ai-startup",
+  "income-strategy", "business-in-a-box",
+]);
+function requiredPlanFor(toolId: string): "free" | "creator" | "pro" {
+  if (!toolId) return "creator";
+  if (FREE_TOOLS.has(toolId)) return "free";
+  if (PRO_TOOLS.has(toolId)) return "pro";
+  return "creator";
+}
+
 /* ── Main handler ─────────────────────────────── */
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -143,7 +159,7 @@ serve(async (req) => {
   }
 
   try {
-    const { toolName, toolPrompt, userInput, userApiKey, preferredProvider } = await req.json();
+    const { toolId, toolName, toolPrompt, userInput, userApiKey, preferredProvider } = await req.json();
 
     if (!toolName || !userInput) {
       return new Response(
@@ -168,25 +184,41 @@ serve(async (req) => {
       userId = user?.id ?? null;
     }
 
-    // Check usage
-    if (userId) {
-      const { data: usageResult, error: usageError } = await adminClient.rpc(
-        "check_and_increment_usage",
-        { p_user_id: userId },
+    // Require auth for any generation
+    if (!userId) {
+      return new Response(
+        JSON.stringify({ error: "Sign in required", code: "AUTH_REQUIRED" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
+    }
 
-      if (usageError) {
-        console.error("Usage check error:", usageError);
-      } else if (usageResult && !usageResult.allowed) {
-        return new Response(
-          JSON.stringify({
-            error: "Daily limit reached. Upgrade to Premium for unlimited generations.",
-            code: "LIMIT_REACHED",
-            remaining: 0,
-          }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
-      }
+    // Plan + limit enforcement
+    const required = requiredPlanFor(toolId || "");
+    const { data: usageResult, error: usageError } = await adminClient.rpc(
+      "check_and_increment_usage_v2",
+      { p_user_id: userId, p_tool_id: toolId || "", p_required_plan: required },
+    );
+
+    if (usageError) {
+      console.error("Usage check error:", usageError);
+      return new Response(
+        JSON.stringify({ error: "Usage check failed" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    if (usageResult && !usageResult.allowed) {
+      const code = usageResult.code || "UPGRADE_REQUIRED";
+      const status = code === "UPGRADE_REQUIRED" ? 403 : 429;
+      return new Response(
+        JSON.stringify({
+          error: usageResult.error || "Upgrade required",
+          code,
+          tier: usageResult.tier,
+          required: usageResult.required,
+        }),
+        { status, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
 
     const systemPrompt = `You are an expert AI assistant powering "${toolName}" — a premium professional tool inside AI Hustle Studio. Users are paying for this service and expect production-ready, full-length output.
