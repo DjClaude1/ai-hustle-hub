@@ -1044,6 +1044,13 @@ const ToolPage = () => {
           <SharePanel toolName={tool.name} category={tool.category} output={output} />
         )}
       </div>
+
+      <UpgradeModal
+        open={upgradeOpen}
+        onClose={() => setUpgradeOpen(false)}
+        onUpgrade={(t) => { setUpgradeOpen(false); void handleUpgrade(t); }}
+        requiredPlan={upgradeRequired}
+      />
     </div>
   );
 };
