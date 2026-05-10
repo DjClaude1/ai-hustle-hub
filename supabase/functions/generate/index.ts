@@ -120,16 +120,22 @@ async function rollbackUsageIncrement(userId: string | null) {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const admin = createClient(supabaseUrl, serviceKey);
     const today = new Date().toISOString().split("T")[0];
+    const month = today.slice(0, 7);
     const { data: profile } = await admin
       .from("profiles")
-      .select("generations_today, last_generation_date")
+      .select("generations_today, last_generation_date, generations_this_month, last_generation_month")
       .eq("id", userId)
       .single();
-    if (profile && profile.last_generation_date === today && profile.generations_today > 0) {
-      await admin
-        .from("profiles")
-        .update({ generations_today: profile.generations_today - 1 })
-        .eq("id", userId);
+    if (!profile) return;
+    const updates: Record<string, number> = {};
+    if (profile.last_generation_date === today && profile.generations_today > 0) {
+      updates.generations_today = profile.generations_today - 1;
+    }
+    if (profile.last_generation_month === month && profile.generations_this_month > 0) {
+      updates.generations_this_month = profile.generations_this_month - 1;
+    }
+    if (Object.keys(updates).length > 0) {
+      await admin.from("profiles").update(updates).eq("id", userId);
     }
   } catch (e) {
     console.error("Rollback error:", e);
