@@ -16,7 +16,8 @@ import { useSubscription } from "@/hooks/useSubscription";
 import { supabase } from "@/integrations/supabase/client";
 import { SharePanel } from "@/components/SharePanel";
 import { ProductPreview } from "@/components/ProductPreview";
-import { createPayfastCheckout, submitPayfastCheckout } from "@/lib/payfast";
+import { UpgradeModal } from "@/components/UpgradeModal";
+import { getRequiredPlan, type PlanTier } from "@/lib/plans";
 import { buildManualGenerationBrief, extractBasicCvData, isAiCreditsError } from "@/lib/aiFallbacks";
 
 // Lazy-load pdfjs only when needed
