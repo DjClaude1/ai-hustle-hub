@@ -824,9 +824,12 @@ const ToolPage = () => {
             <h1 className="font-display text-xl font-bold text-foreground">{tool.name}</h1>
             <p className="text-sm text-muted-foreground">{tool.description}</p>
           </div>
-          {tool.premium && (
-            <span className="flex items-center gap-1 rounded-full bg-accent/10 px-2.5 py-1 text-xs font-medium text-accent">
-              <Crown className="h-3 w-3" /> Pro
+          {(requiredPlan === "creator" || requiredPlan === "pro") && (
+            <span className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ${
+              requiredPlan === "pro" ? "bg-accent/10 text-accent" : "bg-primary/10 text-primary"
+            }`}>
+              {requiredPlan === "pro" ? <Crown className="h-3 w-3" /> : <Sparkles className="h-3 w-3" />}
+              {requiredPlan === "pro" ? "Pro" : "Creator"}
             </span>
           )}
         </div>
@@ -834,15 +837,23 @@ const ToolPage = () => {
         {/* Tool locked paywall */}
         {toolLocked && (
           <div className="mb-4 rounded-xl border border-accent/30 bg-accent/5 p-6 text-center">
-            <Crown className="h-8 w-8 text-accent mx-auto mb-2" />
-            <h3 className="font-display text-lg font-semibold text-foreground">Pro Tool</h3>
-            <p className="text-sm text-muted-foreground mt-1 mb-4">This tool requires a Pro or Business plan.</p>
-            <div className="flex gap-3 justify-center">
-              <Button variant="hero" size="sm" onClick={() => handleUpgrade("pro")}>
-                Upgrade to Pro — R149/mo
-              </Button>
-              <Button variant="accent" size="sm" onClick={() => handleUpgrade("business")}>
-                Go Business — R499/mo
+            <Lock className="h-8 w-8 text-accent mx-auto mb-2" />
+            <h3 className="font-display text-lg font-semibold text-foreground">
+              {requiredPlan === "pro" ? "Pro-only tool" : "Creator+ tool"}
+            </h3>
+            <p className="text-sm text-muted-foreground mt-1 mb-4">
+              {requiredPlan === "pro"
+                ? "Upgrade to Pro for unlimited AI generation and advanced business systems."
+                : "Upgrade to unlock advanced AI business tools."}
+            </p>
+            <div className="flex gap-3 justify-center flex-wrap">
+              {requiredPlan !== "pro" && (
+                <Button variant="hero" size="sm" onClick={() => handleUpgrade("creator")}>
+                  <Sparkles className="h-4 w-4" /> Creator — $19/mo
+                </Button>
+              )}
+              <Button variant="accent" size="sm" onClick={() => handleUpgrade("pro")}>
+                <Crown className="h-4 w-4" /> Pro — $49/mo
               </Button>
             </div>
           </div>
