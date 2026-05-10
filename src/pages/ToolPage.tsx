@@ -16,7 +16,8 @@ import { useSubscription } from "@/hooks/useSubscription";
 import { supabase } from "@/integrations/supabase/client";
 import { SharePanel } from "@/components/SharePanel";
 import { ProductPreview } from "@/components/ProductPreview";
-import { createPayfastCheckout, submitPayfastCheckout } from "@/lib/payfast";
+import { UpgradeModal } from "@/components/UpgradeModal";
+import { getRequiredPlan, type PlanTier } from "@/lib/plans";
 import { buildManualGenerationBrief, extractBasicCvData, isAiCreditsError } from "@/lib/aiFallbacks";
 
 // Lazy-load pdfjs only when needed
@@ -427,7 +428,7 @@ const ToolPage = () => {
   const { toolId } = useParams<{ toolId: string }>();
   const tool = getToolById(toolId || "");
   const { user, session } = useAuth();
-  const { tier, isPro, isAdmin, dailyLimit } = useSubscription();
+  const { tier, isPro, isAdmin, dailyLimit, canAccessTool, getRequiredPlan: getReqPlan } = useSubscription();
   const navigate = useNavigate();
 
   const [inputValues, setInputValues] = useState<Record<string, string>>({});
@@ -438,6 +439,8 @@ const ToolPage = () => {
   const [remaining, setRemaining] = useState<number | null>(null);
   const [draftSaving, setDraftSaving] = useState(false);
   const [generationFallback, setGenerationFallback] = useState<GenerationFallback | null>(null);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [upgradeRequired, setUpgradeRequired] = useState<PlanTier>("creator");
   const abortRef = useRef<AbortController | null>(null);
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -521,8 +524,9 @@ const ToolPage = () => {
     );
   }
 
-  // Check premium tool access
-  const toolLocked = tool.premium && !isPro && !isAdmin;
+  // Check tool access via centralized plan map
+  const toolLocked = !canAccessTool(tool.id);
+  const requiredPlan: PlanTier = getReqPlan(tool.id);
 
   const buildUserInput = () => {
     const lines: string[] = [];
@@ -606,15 +610,20 @@ const ToolPage = () => {
           "Content-Type": "application/json",
           Authorization: `Bearer ${session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
-        body: JSON.stringify({ toolName: tool.name, toolPrompt: tool.prompt, userInput }),
+        body: JSON.stringify({ toolId: tool.id, toolName: tool.name, toolPrompt: tool.prompt, userInput }),
         signal: controller.signal,
       });
 
       if (!resp.ok) {
         const err = await resp.json().catch(() => ({ error: "Generation failed" }));
-        if (err.code === "LIMIT_REACHED") {
+        if (err.code === "UPGRADE_REQUIRED") {
+          setUpgradeRequired((err.required as PlanTier) || requiredPlan);
+          setUpgradeOpen(true);
+          toast.error(err.error || "Upgrade required");
+        } else if (err.code === "DAILY_LIMIT" || err.code === "MONTHLY_LIMIT" || err.code === "LIMIT_REACHED") {
           setRemaining(0);
-          toast.error(err.error || "Daily limit reached.");
+          toast.error(err.error || "Limit reached.");
+          setUpgradeOpen(true);
         } else if (resp.status === 429) {
           toast.error(err.error || "Too many requests right now. Please wait a moment and try again.");
         } else if (resp.status === 402) {
@@ -775,24 +784,30 @@ const ToolPage = () => {
     toast.success("Form cleared");
   };
 
-  const handleUpgrade = async (upgradeTier: string) => {
+  const handleUpgrade = async (upgradeTier: "creator" | "pro") => {
     if (!user || !session) {
       navigate("/auth");
       return;
     }
-
     try {
-      const checkout = await createPayfastCheckout({
-        accessToken: session.access_token,
-        tier: upgradeTier,
-        returnUrl: `${window.location.origin}/dashboard`,
-        cancelUrl: `${window.location.origin}/dashboard`,
+      const { data, error } = await supabase.functions.invoke("paypal-create-subscription", {
+        body: {
+          tier: upgradeTier,
+          returnUrl: `${window.location.origin}/dashboard`,
+          cancelUrl: `${window.location.origin}/dashboard?paypal=cancelled`,
+        },
       });
-
-      submitPayfastCheckout(checkout);
+      if (error) throw error;
+      if (!data?.approveUrl) throw new Error("No PayPal approval URL returned");
+      window.location.href = data.approveUrl;
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Payment initiation failed. Please try again.");
     }
+  };
+
+  const openUpgrade = () => {
+    setUpgradeRequired(requiredPlan === "free" ? "creator" : requiredPlan);
+    setUpgradeOpen(true);
   };
 
   return (
@@ -814,9 +829,12 @@ const ToolPage = () => {
             <h1 className="font-display text-xl font-bold text-foreground">{tool.name}</h1>
             <p className="text-sm text-muted-foreground">{tool.description}</p>
           </div>
-          {tool.premium && (
-            <span className="flex items-center gap-1 rounded-full bg-accent/10 px-2.5 py-1 text-xs font-medium text-accent">
-              <Crown className="h-3 w-3" /> Pro
+          {(requiredPlan === "creator" || requiredPlan === "pro") && (
+            <span className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ${
+              requiredPlan === "pro" ? "bg-accent/10 text-accent" : "bg-primary/10 text-primary"
+            }`}>
+              {requiredPlan === "pro" ? <Crown className="h-3 w-3" /> : <Sparkles className="h-3 w-3" />}
+              {requiredPlan === "pro" ? "Pro" : "Creator"}
             </span>
           )}
         </div>
@@ -824,15 +842,23 @@ const ToolPage = () => {
         {/* Tool locked paywall */}
         {toolLocked && (
           <div className="mb-4 rounded-xl border border-accent/30 bg-accent/5 p-6 text-center">
-            <Crown className="h-8 w-8 text-accent mx-auto mb-2" />
-            <h3 className="font-display text-lg font-semibold text-foreground">Pro Tool</h3>
-            <p className="text-sm text-muted-foreground mt-1 mb-4">This tool requires a Pro or Business plan.</p>
-            <div className="flex gap-3 justify-center">
-              <Button variant="hero" size="sm" onClick={() => handleUpgrade("pro")}>
-                Upgrade to Pro — R149/mo
-              </Button>
-              <Button variant="accent" size="sm" onClick={() => handleUpgrade("business")}>
-                Go Business — R499/mo
+            <Lock className="h-8 w-8 text-accent mx-auto mb-2" />
+            <h3 className="font-display text-lg font-semibold text-foreground">
+              {requiredPlan === "pro" ? "Pro-only tool" : "Creator+ tool"}
+            </h3>
+            <p className="text-sm text-muted-foreground mt-1 mb-4">
+              {requiredPlan === "pro"
+                ? "Upgrade to Pro for unlimited AI generation and advanced business systems."
+                : "Upgrade to unlock advanced AI business tools."}
+            </p>
+            <div className="flex gap-3 justify-center flex-wrap">
+              {requiredPlan !== "pro" && (
+                <Button variant="hero" size="sm" onClick={() => handleUpgrade("creator")}>
+                  <Sparkles className="h-4 w-4" /> Creator — $19/mo
+                </Button>
+              )}
+              <Button variant="accent" size="sm" onClick={() => handleUpgrade("pro")}>
+                <Crown className="h-4 w-4" /> Pro — $49/mo
               </Button>
             </div>
           </div>
@@ -1018,6 +1044,13 @@ const ToolPage = () => {
           <SharePanel toolName={tool.name} category={tool.category} output={output} />
         )}
       </div>
+
+      <UpgradeModal
+        open={upgradeOpen}
+        onClose={() => setUpgradeOpen(false)}
+        onUpgrade={(t) => { setUpgradeOpen(false); void handleUpgrade(t); }}
+        requiredPlan={upgradeRequired}
+      />
     </div>
   );
 };

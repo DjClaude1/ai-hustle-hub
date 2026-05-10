@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
       status: active ? "COMPLETE" : sub.status, updated_at: new Date().toISOString(),
     }).eq("subscription_id", subscriptionId);
 
-    if (active && (tier === "pro" || tier === "business")) {
+    if (active && (tier === "creator" || tier === "pro")) {
       await supabase.from("profiles").update({
         subscription_tier: tier, is_premium: true, updated_at: new Date().toISOString(),
       }).eq("id", user.id);

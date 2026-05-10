@@ -7,8 +7,8 @@ const corsHeaders = {
 
 const PAYPAL_BASE = "https://api-m.paypal.com"; // live
 const TIERS: Record<string, { name: string; amount: string }> = {
-  pro: { name: "AI Hustle Studio Pro", amount: "9.00" },
-  business: { name: "AI Hustle Studio Business", amount: "29.00" },
+  creator: { name: "AI Hustle Studio Creator", amount: "19.00" },
+  pro: { name: "AI Hustle Studio Pro", amount: "49.00" },
 };
 
 async function getAccessToken() {
@@ -83,7 +83,7 @@ Deno.serve(async (req) => {
     if (!user) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     const { tier, returnUrl, cancelUrl } = await req.json();
-    if (!["pro", "business"].includes(tier)) {
+    if (!["creator", "pro"].includes(tier)) {
       return new Response(JSON.stringify({ error: "Invalid tier" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 

@@ -1,22 +1,43 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-
-export type SubscriptionTier = "free" | "pro" | "business";
+import { PLANS, type PlanTier, canAccessTool, getRequiredPlan, tierMeets } from "@/lib/plans";
 
 interface SubscriptionData {
-  tier: SubscriptionTier;
+  tier: PlanTier;
   isAdmin: boolean;
   loading: boolean;
+  /** Convenience flags */
+  isFree: boolean;
+  isCreator: boolean;
   isPro: boolean;
-  isBusiness: boolean;
   isPaid: boolean;
+  /** Limits sourced from PLANS */
   dailyLimit: number;
+  monthlyLimit: number;
+  historyDays: number;
+  /** Feature flags */
+  canExportPdf: boolean;
+  canExportDocx: boolean;
+  canFavorite: boolean;
+  /** Helpers */
+  canAccessTool: (toolId: string) => boolean;
+  getRequiredPlan: (toolId: string) => PlanTier;
+  meetsTier: (required: PlanTier) => boolean;
 }
+
+export type SubscriptionTier = PlanTier;
+
+const normalizeTier = (raw: string | null | undefined): PlanTier => {
+  // Map any legacy values defensively.
+  if (raw === "business") return "pro";
+  if (raw === "creator" || raw === "pro" || raw === "free") return raw;
+  return "free";
+};
 
 export const useSubscription = (): SubscriptionData => {
   const { user } = useAuth();
-  const [tier, setTier] = useState<SubscriptionTier>("free");
+  const [tier, setTier] = useState<PlanTier>("free");
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -29,41 +50,38 @@ export const useSubscription = (): SubscriptionData => {
     }
 
     const load = async () => {
-      // Load profile tier
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("subscription_tier, is_premium")
-        .eq("id", user.id)
-        .single();
+      const [{ data: profile }, { data: roles }] = await Promise.all([
+        supabase.from("profiles").select("subscription_tier").eq("id", user.id).single(),
+        supabase.from("user_roles").select("role").eq("user_id", user.id),
+      ]);
 
-      if (profile) {
-        setTier((profile.subscription_tier as SubscriptionTier) || "free");
-      }
-
-      // Check admin role
-      const { data: roles } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", user.id);
-
-      setIsAdmin(roles?.some((r: any) => r.role === "admin") || false);
+      const admin = roles?.some((r: any) => r.role === "admin") || false;
+      setIsAdmin(admin);
+      setTier(admin ? "pro" : normalizeTier(profile?.subscription_tier));
       setLoading(false);
     };
 
     load();
   }, [user]);
 
-  const isPro = tier === "pro" || tier === "business" || isAdmin;
-  const isBusiness = tier === "business" || isAdmin;
-  const isPaid = tier !== "free" || isAdmin;
+  const plan = PLANS[tier];
 
   return {
     tier,
     isAdmin,
     loading,
-    isPro,
-    isBusiness,
-    isPaid,
-    dailyLimit: isBusiness || isAdmin ? 999999 : isPro ? 50 : 5,
+    isFree: tier === "free" && !isAdmin,
+    isCreator: tier === "creator" || isAdmin,
+    isPro: tier === "pro" || isAdmin,
+    isPaid: tier !== "free" || isAdmin,
+    dailyLimit: plan.dailyLimit,
+    monthlyLimit: plan.monthlyLimit,
+    historyDays: plan.historyDays,
+    canExportPdf: plan.features.pdfExport,
+    canExportDocx: plan.features.docxExport,
+    canFavorite: plan.features.favorites,
+    canAccessTool: (toolId) => canAccessTool(tier, toolId),
+    getRequiredPlan,
+    meetsTier: (required) => tierMeets(tier, required),
   };
 };
