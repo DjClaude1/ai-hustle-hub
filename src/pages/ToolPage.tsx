@@ -779,24 +779,30 @@ const ToolPage = () => {
     toast.success("Form cleared");
   };
 
-  const handleUpgrade = async (upgradeTier: string) => {
+  const handleUpgrade = async (upgradeTier: "creator" | "pro") => {
     if (!user || !session) {
       navigate("/auth");
       return;
     }
-
     try {
-      const checkout = await createPayfastCheckout({
-        accessToken: session.access_token,
-        tier: upgradeTier,
-        returnUrl: `${window.location.origin}/dashboard`,
-        cancelUrl: `${window.location.origin}/dashboard`,
+      const { data, error } = await supabase.functions.invoke("paypal-create-subscription", {
+        body: {
+          tier: upgradeTier,
+          returnUrl: `${window.location.origin}/dashboard`,
+          cancelUrl: `${window.location.origin}/dashboard?paypal=cancelled`,
+        },
       });
-
-      submitPayfastCheckout(checkout);
+      if (error) throw error;
+      if (!data?.approveUrl) throw new Error("No PayPal approval URL returned");
+      window.location.href = data.approveUrl;
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Payment initiation failed. Please try again.");
     }
+  };
+
+  const openUpgrade = () => {
+    setUpgradeRequired(requiredPlan === "free" ? "creator" : requiredPlan);
+    setUpgradeOpen(true);
   };
 
   return (
