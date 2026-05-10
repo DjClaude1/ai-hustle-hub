@@ -7,8 +7,8 @@ const corsHeaders = {
 
 const PAYPAL_BASE = "https://api-m.paypal.com"; // live
 const TIERS: Record<string, { name: string; amount: string }> = {
-  pro: { name: "AI Hustle Studio Pro", amount: "9.00" },
-  business: { name: "AI Hustle Studio Business", amount: "29.00" },
+  creator: { name: "AI Hustle Studio Creator", amount: "19.00" },
+  pro: { name: "AI Hustle Studio Pro", amount: "49.00" },
 };
 
 async function getAccessToken() {
