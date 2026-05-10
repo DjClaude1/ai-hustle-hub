@@ -428,7 +428,7 @@ const ToolPage = () => {
   const { toolId } = useParams<{ toolId: string }>();
   const tool = getToolById(toolId || "");
   const { user, session } = useAuth();
-  const { tier, isPro, isAdmin, dailyLimit } = useSubscription();
+  const { tier, isPro, isAdmin, dailyLimit, canAccessTool, getRequiredPlan: getReqPlan } = useSubscription();
   const navigate = useNavigate();
 
   const [inputValues, setInputValues] = useState<Record<string, string>>({});
@@ -439,6 +439,8 @@ const ToolPage = () => {
   const [remaining, setRemaining] = useState<number | null>(null);
   const [draftSaving, setDraftSaving] = useState(false);
   const [generationFallback, setGenerationFallback] = useState<GenerationFallback | null>(null);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [upgradeRequired, setUpgradeRequired] = useState<PlanTier>("creator");
   const abortRef = useRef<AbortController | null>(null);
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
