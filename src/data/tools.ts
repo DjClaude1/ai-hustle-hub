@@ -514,6 +514,24 @@ export const tools: Tool[] = [
       { key: "preferences", label: "Preferences", placeholder: "e.g., Prefer passive income, no client work, interested in digital products", type: "textarea" },
     ],
   },
+  {
+    id: "business-in-a-box",
+    name: "Business-in-a-Box Generator",
+    description: "PRO flagship: Generate a complete business — idea, branding, offer, pricing, marketing hooks, landing page copy & 30-day content strategy",
+    category: "Automation",
+    icon: Package,
+    premium: true,
+    prompt: "You are an elite business strategist. Build a COMPLETE, ready-to-launch business package for the user. Output MUST include every section below, fully written out (no placeholders, no outlines):\n\n1. **BUSINESS IDEA** — A specific, validated business concept fitted to the niche, audience, and income goal. Explain why it works now.\n2. **BRANDING** — Brand name (3 options + recommendation), tagline, brand voice/personality, color palette suggestions, logo direction.\n3. **CORE OFFER** — Detailed product/service description, what's included, the transformation it delivers, and a powerful name for the offer.\n4. **PRICING STRATEGY** — 3-tier pricing (entry / core / premium) with exact prices, what each tier includes, and psychological positioning.\n5. **MARKETING HOOKS** — 10 scroll-stopping hooks/headlines (mix of pain, curiosity, transformation, contrarian).\n6. **LANDING PAGE COPY** — A complete, ready-to-paste landing page: hero headline + subheadline, problem section, solution section, 3 benefit blocks, social proof framing, FAQ (5 questions), and a strong CTA section.\n7. **30-DAY CONTENT STRATEGY** — A day-by-day content calendar (30 entries) with platform, content type, hook, and CTA for each day.\n8. **LAUNCH PLAN** — A concrete 14-day launch sequence with daily actions to hit the income goal.\n\nWrite the full content for every section. This is a flagship deliverable — be thorough, specific, and immediately actionable.",
+    inputs: [
+      { key: "niche", label: "Niche / Industry", placeholder: "e.g., Productivity coaching for remote software engineers", type: "text", required: true },
+      { key: "audience", label: "Target Audience", placeholder: "e.g., Senior devs aged 28-45 working remote, struggling with focus", type: "textarea", required: true },
+      { key: "incomeGoal", label: "Monthly Income Goal", placeholder: "Select target", type: "select", options: ["$1,000/mo", "$3,000/mo", "$5,000/mo", "$10,000/mo", "$25,000/mo", "$50,000+/mo"] },
+      { key: "businessType", label: "Preferred Business Type", placeholder: "Select type", type: "select", options: ["Digital Product", "Online Course", "Coaching / Consulting", "SaaS / Software", "Membership / Community", "Agency / Service", "Let AI Decide"] },
+      { key: "skills", label: "Your Skills & Strengths", placeholder: "e.g., 10 years coding, good at writing, comfortable on video", type: "textarea", required: true },
+      { key: "timeline", label: "Time to Launch", placeholder: "Select", type: "select", options: ["1 Week", "2 Weeks", "30 Days", "60 Days", "90 Days"] },
+      { key: "extras", label: "Anything Else", placeholder: "e.g., I want passive income, no 1-on-1 calls, prefer evergreen funnels", type: "textarea" },
+    ],
+  },
 ];
 
 export const getToolsByCategory = (category: ToolCategory) =>
