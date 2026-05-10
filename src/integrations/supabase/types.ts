@@ -149,10 +149,12 @@ export type Database = {
           created_at: string
           email: string | null
           full_name: string | null
+          generations_this_month: number
           generations_today: number
           id: string
           is_premium: boolean
           last_generation_date: string | null
+          last_generation_month: string | null
           subscription_tier: string
           updated_at: string
         }
@@ -161,10 +163,12 @@ export type Database = {
           created_at?: string
           email?: string | null
           full_name?: string | null
+          generations_this_month?: number
           generations_today?: number
           id: string
           is_premium?: boolean
           last_generation_date?: string | null
+          last_generation_month?: string | null
           subscription_tier?: string
           updated_at?: string
         }
@@ -173,10 +177,12 @@ export type Database = {
           created_at?: string
           email?: string | null
           full_name?: string | null
+          generations_this_month?: number
           generations_today?: number
           id?: string
           is_premium?: boolean
           last_generation_date?: string | null
+          last_generation_month?: string | null
           subscription_tier?: string
           updated_at?: string
         }
@@ -206,6 +212,10 @@ export type Database = {
     }
     Functions: {
       check_and_increment_usage: { Args: { p_user_id: string }; Returns: Json }
+      check_and_increment_usage_v2: {
+        Args: { p_required_plan: string; p_tool_id: string; p_user_id: string }
+        Returns: Json
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
