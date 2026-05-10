@@ -83,7 +83,7 @@ Deno.serve(async (req) => {
     if (!user) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     const { tier, returnUrl, cancelUrl } = await req.json();
-    if (!["pro", "business"].includes(tier)) {
+    if (!["creator", "pro"].includes(tier)) {
       return new Response(JSON.stringify({ error: "Invalid tier" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
