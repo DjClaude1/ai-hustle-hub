@@ -616,9 +616,14 @@ const ToolPage = () => {
 
       if (!resp.ok) {
         const err = await resp.json().catch(() => ({ error: "Generation failed" }));
-        if (err.code === "LIMIT_REACHED") {
+        if (err.code === "UPGRADE_REQUIRED") {
+          setUpgradeRequired((err.required as PlanTier) || requiredPlan);
+          setUpgradeOpen(true);
+          toast.error(err.error || "Upgrade required");
+        } else if (err.code === "DAILY_LIMIT" || err.code === "MONTHLY_LIMIT" || err.code === "LIMIT_REACHED") {
           setRemaining(0);
-          toast.error(err.error || "Daily limit reached.");
+          toast.error(err.error || "Limit reached.");
+          setUpgradeOpen(true);
         } else if (resp.status === 429) {
           toast.error(err.error || "Too many requests right now. Please wait a moment and try again.");
         } else if (resp.status === 402) {
