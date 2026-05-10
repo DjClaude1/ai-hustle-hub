@@ -610,7 +610,7 @@ const ToolPage = () => {
           "Content-Type": "application/json",
           Authorization: `Bearer ${session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
-        body: JSON.stringify({ toolName: tool.name, toolPrompt: tool.prompt, userInput }),
+        body: JSON.stringify({ toolId: tool.id, toolName: tool.name, toolPrompt: tool.prompt, userInput }),
         signal: controller.signal,
       });
 
