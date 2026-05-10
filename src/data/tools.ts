@@ -5,6 +5,7 @@ import {
   Youtube, Film, Lightbulb, ImageIcon, PenTool,
   Briefcase, Send, User, FileSignature,
   Rocket, Building2, ClipboardList, Cpu, TrendingUp,
+  Package,
 } from "lucide-react";
 
 export type ToolCategory =
