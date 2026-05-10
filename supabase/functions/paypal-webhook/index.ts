@@ -23,7 +23,7 @@ Deno.serve(async (req) => {
     const activate = ["BILLING.SUBSCRIPTION.ACTIVATED", "PAYMENT.SALE.COMPLETED", "BILLING.SUBSCRIPTION.UPDATED"].includes(type) && (resource.status === "ACTIVE" || type === "PAYMENT.SALE.COMPLETED");
     const cancel = ["BILLING.SUBSCRIPTION.CANCELLED", "BILLING.SUBSCRIPTION.EXPIRED", "BILLING.SUBSCRIPTION.SUSPENDED"].includes(type);
 
-    if (activate && (tier === "pro" || tier === "business")) {
+    if (activate && (tier === "creator" || tier === "pro")) {
       await supabase.from("profiles").update({
         subscription_tier: tier, is_premium: true, updated_at: new Date().toISOString(),
       }).eq("id", userId);
