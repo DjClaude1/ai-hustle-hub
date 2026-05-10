@@ -524,8 +524,9 @@ const ToolPage = () => {
     );
   }
 
-  // Check premium tool access
-  const toolLocked = tool.premium && !isPro && !isAdmin;
+  // Check tool access via centralized plan map
+  const toolLocked = !canAccessTool(tool.id);
+  const requiredPlan: PlanTier = getReqPlan(tool.id);
 
   const buildUserInput = () => {
     const lines: string[] = [];
