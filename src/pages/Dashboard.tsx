@@ -338,14 +338,24 @@ const Dashboard = () => {
                     ) : (
                       <Link to={`/tool/${tool.id}`} className="block">{card}</Link>
                     )}
-                    {user && (
+                    {user && badgeText === null && (
                       <button
                         onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleFav(tool.id); }}
                         className={`absolute top-3 right-3 z-10 flex h-7 w-7 items-center justify-center rounded-full transition-all ${
-                          fav ? "bg-amber-400/15 text-amber-500" : "bg-secondary/60 text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-amber-500"
+                          fav ? "bg-amber-400/15 text-amber-500" : "bg-secondary/80 text-muted-foreground hover:text-amber-500"
                         }`}
                         aria-label={fav ? "Remove from favorites" : "Add to favorites"}
-                        style={fav ? { opacity: 1 } : undefined}
+                      >
+                        <Star className={`h-3.5 w-3.5 ${fav ? "fill-current" : ""}`} />
+                      </button>
+                    )}
+                    {user && badgeText !== null && (
+                      <button
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleFav(tool.id); }}
+                        className={`absolute bottom-3 right-3 z-10 flex h-7 w-7 items-center justify-center rounded-full transition-all ${
+                          fav ? "bg-amber-400/15 text-amber-500" : "bg-secondary/80 text-muted-foreground hover:text-amber-500"
+                        }`}
+                        aria-label={fav ? "Remove from favorites" : "Add to favorites"}
                       >
                         <Star className={`h-3.5 w-3.5 ${fav ? "fill-current" : ""}`} />
                       </button>
