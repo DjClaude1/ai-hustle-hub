@@ -112,6 +112,8 @@ const UsageBanner = ({ remaining, isPremium, tier }: { remaining: number | null;
   if (isPremium || remaining === null) return null;
   if (remaining > 2) return null;
 
+  const limitText = tier === "free" ? "5/day" : "100/month";
+
   return (
     <div className={`mb-4 flex items-center gap-3 rounded-lg border p-3 text-sm ${
       remaining === 0
@@ -121,7 +123,7 @@ const UsageBanner = ({ remaining, isPremium, tier }: { remaining: number | null;
       {remaining === 0 ? (
         <>
           <AlertTriangle className="h-4 w-4 shrink-0" />
-          <span>Daily limit reached ({tier === "free" ? "5/day" : "50/day"}). <Link to="/#pricing" className="font-semibold underline">Upgrade your plan</Link> for more generations.</span>
+          <span>Daily limit reached ({limitText}). <Link to="/#pricing" className="font-semibold underline">Upgrade your plan</Link> for more generations.</span>
         </>
       ) : (
         <>
