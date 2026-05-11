@@ -18,18 +18,25 @@ interface ProviderConfig {
 
 const PROVIDERS: ProviderConfig[] = [
   {
-    name: "openai",
+    name: "openai-gpt5",
+    url: "https://ai.gateway.lovable.dev/v1/chat/completions",
+    model: "openai/gpt-5",
+    getKey: () => Deno.env.get("LOVABLE_API_KEY"),
+    timeout: 15000,
+  },
+  {
+    name: "openai-mini",
     url: "https://ai.gateway.lovable.dev/v1/chat/completions",
     model: "openai/gpt-5-mini",
     getKey: () => Deno.env.get("LOVABLE_API_KEY"),
-    timeout: 10000,
+    timeout: 12000,
   },
   {
     name: "gemini",
     url: "https://ai.gateway.lovable.dev/v1/chat/completions",
     model: "google/gemini-3-flash-preview",
     getKey: () => Deno.env.get("LOVABLE_API_KEY"),
-    timeout: 10000,
+    timeout: 12000,
   },
   {
     name: "gemini-flash",
