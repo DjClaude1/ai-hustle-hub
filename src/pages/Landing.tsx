@@ -196,16 +196,14 @@ const Landing = () => {
             {/* Free */}
             <ScrollReveal delay={0}>
               <div className="rounded-xl border border-border bg-card p-8 shadow-soft h-full flex flex-col">
-                <h3 className="font-display text-lg font-semibold text-foreground">Starter</h3>
-                <p className="mt-1 text-sm text-muted-foreground">Try every tool, free forever</p>
-                <p className="mt-6 font-display text-4xl font-bold text-foreground">R0<span className="text-base font-normal text-muted-foreground">/mo</span></p>
+                <h3 className="font-display text-lg font-semibold text-foreground">Free</h3>
+                <p className="mt-1 text-sm text-muted-foreground">Try the platform, free forever</p>
+                <p className="mt-6 font-display text-4xl font-bold text-foreground">$0<span className="text-base font-normal text-muted-foreground">/mo</span></p>
                 <ul className="mt-6 space-y-3 text-sm text-foreground flex-1">
                   {[
                     "5 generations per day",
-                    "Access to all 29 AI tools",
-                    "3 resume templates",
-                    "Up to 25 eBook chapters",
-                    "PDF / DOCX CV import",
+                    "7 free AI tools",
+                    "7-day history",
                     "Copy & download results",
                   ].map((f) => (
                     <li key={f} className="flex items-center gap-2.5">
@@ -219,48 +217,46 @@ const Landing = () => {
               </div>
             </ScrollReveal>
 
-            {/* Pro */}
+            {/* Creator */}
             <ScrollReveal delay={100}>
               <div className="relative rounded-xl border-2 border-primary bg-card p-8 shadow-card h-full flex flex-col">
                 <div className="absolute -top-3 right-6 rounded-full bg-primary px-3 py-0.5 text-xs font-semibold text-primary-foreground">Most Popular</div>
-                <h3 className="font-display text-lg font-semibold text-foreground">Pro</h3>
+                <h3 className="font-display text-lg font-semibold text-foreground">Creator</h3>
                 <p className="mt-1 text-sm text-muted-foreground">For creators shipping every week</p>
-                <p className="mt-6 font-display text-4xl font-bold text-foreground">R149<span className="text-base font-normal text-muted-foreground">/mo</span></p>
+                <p className="mt-6 font-display text-4xl font-bold text-foreground">$19<span className="text-base font-normal text-muted-foreground">/mo</span></p>
                 <ul className="mt-6 space-y-3 text-sm text-foreground flex-1">
                   {[
-                    "50 generations per day",
-                    "Everything in Starter",
-                    "All 10 resume templates",
-                    "Up to 50 eBook chapters",
-                    "Save & organize history",
-                    "Priority AI speed",
-                    "Social sharing tools",
+                    "100 generations per month",
+                    "All 29 AI tools",
+                    "PDF export",
+                    "Unlimited history",
+                    "Favorites & save",
+                    "Priority queue",
                   ].map((f) => (
                     <li key={f} className="flex items-center gap-2.5">
                       <Check className="h-4 w-4 text-primary flex-shrink-0" /> {f}
                     </li>
                   ))}
                 </ul>
-                <Button variant="hero" className="mt-8 w-full" onClick={() => window.location.href = '/auth?plan=pro'}>
-                  Upgrade to Pro
+                <Button variant="hero" className="mt-8 w-full" onClick={() => window.location.href = '/auth?plan=creator'}>
+                  Get Creator
                 </Button>
               </div>
             </ScrollReveal>
 
-            {/* Business */}
+            {/* Pro */}
             <ScrollReveal delay={200}>
               <div className="rounded-xl border border-accent/30 bg-card p-8 shadow-soft h-full flex flex-col">
-                <h3 className="font-display text-lg font-semibold text-foreground">Business</h3>
+                <h3 className="font-display text-lg font-semibold text-foreground">Pro</h3>
                 <p className="mt-1 text-sm text-muted-foreground">For teams & agencies at scale</p>
-                <p className="mt-6 font-display text-4xl font-bold text-foreground">R499<span className="text-base font-normal text-muted-foreground">/mo</span></p>
+                <p className="mt-6 font-display text-4xl font-bold text-foreground">$49<span className="text-base font-normal text-muted-foreground">/mo</span></p>
                 <ul className="mt-6 space-y-3 text-sm text-foreground flex-1">
                   {[
                     "Unlimited generations",
-                    "Everything in Pro",
-                    "Unlimited eBook chapters",
-                    "Advanced analytics",
-                    "Priority support",
-                    "Early access to new tools",
+                    "Everything in Creator",
+                    "DOCX export",
+                    "Advanced AI mode",
+                    "Pro business tools",
                     "Commercial usage license",
                   ].map((f) => (
                     <li key={f} className="flex items-center gap-2.5">
@@ -268,8 +264,8 @@ const Landing = () => {
                     </li>
                   ))}
                 </ul>
-                <Button variant="accent" className="mt-8 w-full" onClick={() => window.location.href = '/auth?plan=business'}>
-                  Go Business
+                <Button variant="accent" className="mt-8 w-full" onClick={() => window.location.href = '/auth?plan=pro'}>
+                  Go Pro
                 </Button>
               </div>
             </ScrollReveal>
