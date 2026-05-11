@@ -17,16 +17,27 @@ export const Navbar = () => {
   useEffect(() => {
     if (!user) { setUsage(null); return; }
     const load = async () => {
-      const { data } = await supabase
-        .from("profiles")
-        .select("generations_today, last_generation_date, subscription_tier, is_premium")
-        .eq("id", user.id)
-        .single();
-      if (!data) return;
-      const limit = data.subscription_tier === "business" || data.is_premium ? 999999 : data.subscription_tier === "pro" ? 50 : 5;
+      const [{ data: profile }, { data: roles }] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select("generations_today, last_generation_date, generations_this_month, last_generation_month, subscription_tier")
+          .eq("id", user.id)
+          .single(),
+        supabase.from("user_roles").select("role").eq("user_id", user.id),
+      ]);
+      if (!profile) return;
+      const isAdmin = roles?.some((r: any) => r.role === "admin");
+      const tier = isAdmin ? "pro" : profile.subscription_tier;
       const today = new Date().toISOString().split("T")[0];
-      const used = data.last_generation_date === today ? data.generations_today : 0;
-      setUsage({ used, limit });
+      const month = today.slice(0, 7);
+      if (tier === "pro") { setUsage({ used: 0, limit: 999999 }); return; }
+      if (tier === "creator") {
+        const used = profile.last_generation_month === month ? profile.generations_this_month : 0;
+        setUsage({ used, limit: 100 });
+        return;
+      }
+      const used = profile.last_generation_date === today ? profile.generations_today : 0;
+      setUsage({ used, limit: 5 });
     };
     load();
   }, [user, location.pathname]);
