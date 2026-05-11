@@ -18,7 +18,7 @@ const Auth = () => {
   const [googleLoading, setGoogleLoading] = useState(false);
   const navigate = useNavigate();
   const requestedPlan = searchParams.get("plan");
-  const nextPath = requestedPlan && ["pro", "business"].includes(requestedPlan)
+  const nextPath = requestedPlan && ["creator", "pro"].includes(requestedPlan)
     ? `/dashboard?upgrade=${requestedPlan}`
     : "/dashboard";
 
