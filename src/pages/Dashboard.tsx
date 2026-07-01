@@ -17,7 +17,10 @@ import { PLANS, getRequiredPlan, type PlanTier } from "@/lib/plans";
 const Dashboard = () => {
   const [activeCategory, setActiveCategory] = useState<ToolCategory | "All" | "Favorites">("All");
   const [query, setQuery] = useState("");
-  const { tier, isAdmin, canAccessTool } = useSubscription();
+  const {
+    tier, isAdmin, canAccessTool, refresh,
+    trialActive, trialAvailable, trialRemaining, trialLimit, trialEndsAt,
+  } = useSubscription();
   const { user, session } = useAuth();
   const { favorites, toggle: toggleFav, isFavorite } = useFavorites();
   const handledUpgradeRef = useRef<string | null>(null);
@@ -27,6 +30,7 @@ const Dashboard = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalRequired, setModalRequired] = useState<PlanTier>("creator");
   const [modalReason, setModalReason] = useState<string | undefined>();
+  const trialExhausted = !trialActive && (trialLimit - trialRemaining) >= trialLimit && !trialAvailable;
 
   const searchParams = new URLSearchParams(window.location.search);
   const requestedUpgrade = searchParams.get("upgrade");
