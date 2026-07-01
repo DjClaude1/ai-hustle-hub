@@ -156,7 +156,7 @@ const Dashboard = () => {
   }, [recents]);
 
   return (
-    <div className="min-h-screen pt-20 pb-16 bg-background">
+    <div className="min-h-screen pt-20 pb-16 bg-background md:pl-56">
       <div className="container">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
           <div>
