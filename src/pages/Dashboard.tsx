@@ -113,6 +113,9 @@ const Dashboard = () => {
       });
       if (error) {
         toast.error("Could not verify subscription. It will activate automatically once PayPal confirms.");
+      } else if (data?.inTrial) {
+        toast.success("Free trial started! You have 3 premium generations.");
+        await refresh();
       } else if (data?.active) {
         toast.success(`Welcome to ${PLANS[(data.tier as PlanTier) ?? "creator"]?.name ?? "your new plan"}! Your plan is active.`);
         setTimeout(() => window.location.reload(), 1500);
