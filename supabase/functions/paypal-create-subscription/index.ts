@@ -27,7 +27,7 @@ async function getAccessToken() {
   return j.access_token as string;
 }
 
-async function ensurePlan(supabase: any, token: string, tier: "pro" | "business") {
+async function ensurePlan(supabase: any, token: string, tier: "creator" | "pro") {
   const { data: cached } = await supabase.from("paypal_plans").select("*").eq("tier", tier).maybeSingle();
   if (cached?.plan_id) return cached.plan_id as string;
 
@@ -41,21 +41,30 @@ async function ensurePlan(supabase: any, token: string, tier: "pro" | "business"
   const product = await prodRes.json();
   if (!prodRes.ok) throw new Error(`Product create failed: ${JSON.stringify(product)}`);
 
-  // Create plan (monthly recurring USD)
+  // Create plan — 7-day free trial cycle, then recurring monthly.
   const planRes = await fetch(`${PAYPAL_BASE}/v1/billing/plans`, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", Prefer: "return=representation" },
     body: JSON.stringify({
       product_id: product.id,
-      name: `${cfg.name} Monthly`,
+      name: `${cfg.name} Monthly (7-Day Free Trial)`,
       status: "ACTIVE",
-      billing_cycles: [{
-        frequency: { interval_unit: "MONTH", interval_count: 1 },
-        tenure_type: "REGULAR",
-        sequence: 1,
-        total_cycles: 0,
-        pricing_scheme: { fixed_price: { value: cfg.amount, currency_code: "USD" } },
-      }],
+      billing_cycles: [
+        {
+          frequency: { interval_unit: "DAY", interval_count: 7 },
+          tenure_type: "TRIAL",
+          sequence: 1,
+          total_cycles: 1,
+          pricing_scheme: { fixed_price: { value: "0.00", currency_code: "USD" } },
+        },
+        {
+          frequency: { interval_unit: "MONTH", interval_count: 1 },
+          tenure_type: "REGULAR",
+          sequence: 2,
+          total_cycles: 0,
+          pricing_scheme: { fixed_price: { value: cfg.amount, currency_code: "USD" } },
+        },
+      ],
       payment_preferences: { auto_bill_outstanding: true, setup_fee_failure_action: "CONTINUE", payment_failure_threshold: 2 },
     }),
   });
@@ -87,6 +96,13 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Invalid tier" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    // Prevent multi-trial farming: once premium trial has been consumed, block trial reuse.
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("premium_trial_used, subscription_tier, subscription_status")
+      .eq("id", user.id)
+      .maybeSingle();
+
     const token = await getAccessToken();
     const planId = await ensurePlan(supabase, token, tier);
 
@@ -113,6 +129,7 @@ Deno.serve(async (req) => {
     await supabase.from("payments").insert({
       user_id: user.id, tier, amount: Number(TIERS[tier].amount),
       status: "pending", provider: "paypal", subscription_id: sub.id, payment_id: sub.id,
+      metadata: { trial: true, previous_trial_used: profile?.premium_trial_used ?? 0 },
     });
 
     return new Response(JSON.stringify({ subscriptionId: sub.id, approveUrl: approveLink }), {
