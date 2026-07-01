@@ -423,6 +423,8 @@ const Dashboard = () => {
         onUpgrade={(t) => { setModalOpen(false); void handleUpgrade(t); }}
         requiredPlan={modalRequired}
         reason={modalReason}
+        trialAvailable={trialAvailable}
+        trialExhausted={trialExhausted}
       />
 
       <WelcomeTour open={tourOpen} onClose={() => setTourOpen(false)} />
