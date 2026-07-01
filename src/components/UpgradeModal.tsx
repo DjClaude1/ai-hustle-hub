@@ -100,8 +100,10 @@ export const UpgradeModal = ({ open, onClose, onUpgrade, requiredPlan, reason, t
             >
               {requiredPlan === "pro" ? (
                 <><Lock className="h-4 w-4" /> Needs Pro</>
+              ) : trialAvailable ? (
+                <><Gift className="h-4 w-4" /> {ctaLabel("creator")}</>
               ) : (
-                <><Sparkles className="h-4 w-4" /> Get Creator</>
+                <><Sparkles className="h-4 w-4" /> {ctaLabel("creator")}</>
               )}
             </Button>
           </div>
@@ -134,7 +136,7 @@ export const UpgradeModal = ({ open, onClose, onUpgrade, requiredPlan, reason, t
               ))}
             </ul>
             <Button variant="accent" className="mt-4 w-full" onClick={() => onUpgrade("pro")}>
-              <Crown className="h-4 w-4" /> Get Pro
+              {trialAvailable ? <><Gift className="h-4 w-4" /> {ctaLabel("pro")}</> : <><Crown className="h-4 w-4" /> {ctaLabel("pro")}</>}
             </Button>
           </div>
         </div>
