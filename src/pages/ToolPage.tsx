@@ -430,7 +430,7 @@ const ToolPage = () => {
   const { toolId } = useParams<{ toolId: string }>();
   const tool = getToolById(toolId || "");
   const { user, session } = useAuth();
-  const { tier, isPro, isAdmin, dailyLimit, canAccessTool, getRequiredPlan: getReqPlan } = useSubscription();
+  const { tier, isPro, isAdmin, dailyLimit, canAccessTool, getRequiredPlan: getReqPlan, trialActive, trialAvailable, trialRemaining, refresh: refreshSub } = useSubscription();
   const navigate = useNavigate();
 
   const [inputValues, setInputValues] = useState<Record<string, string>>({});
@@ -621,7 +621,11 @@ const ToolPage = () => {
         if (err.code === "UPGRADE_REQUIRED") {
           setUpgradeRequired((err.required as PlanTier) || requiredPlan);
           setUpgradeOpen(true);
-          toast.error(err.error || "Upgrade required");
+          toast.error(err.trial_available ? "Start your free premium trial to use this tool." : (err.error || "Upgrade required"));
+        } else if (err.code === "TRIAL_EXHAUSTED") {
+          setUpgradeRequired((err.required as PlanTier) || requiredPlan);
+          setUpgradeOpen(true);
+          toast.error("Free trial exhausted — subscribe to keep going.");
         } else if (err.code === "DAILY_LIMIT" || err.code === "MONTHLY_LIMIT" || err.code === "LIMIT_REACHED") {
           setRemaining(0);
           toast.error(err.error || "Limit reached.");
@@ -694,6 +698,7 @@ const ToolPage = () => {
       }
 
       if (!isAdmin && remaining !== null) setRemaining(Math.max(0, remaining - 1));
+      void refreshSub();
 
       if (user && accumulated) {
         supabase.from("generations").insert({
@@ -813,7 +818,7 @@ const ToolPage = () => {
   };
 
   return (
-    <div className="min-h-screen pt-20 pb-16 bg-background">
+    <div className="min-h-screen pt-20 pb-16 bg-background md:pl-56">
       <div className="container max-w-2xl">
         <Link
           to="/dashboard"
