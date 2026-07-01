@@ -846,28 +846,38 @@ const ToolPage = () => {
           )}
         </div>
 
-        {/* Tool locked paywall */}
+        {/* Tool locked paywall (with trial CTA) */}
         {toolLocked && (
           <div className="mb-4 rounded-xl border border-accent/30 bg-accent/5 p-6 text-center">
             <Lock className="h-8 w-8 text-accent mx-auto mb-2" />
             <h3 className="font-display text-lg font-semibold text-foreground">
-              {requiredPlan === "pro" ? "Pro-only tool" : "Creator+ tool"}
+              {trialAvailable ? "Try this premium tool free" : requiredPlan === "pro" ? "Pro-only tool" : "Creator+ tool"}
             </h3>
             <p className="text-sm text-muted-foreground mt-1 mb-4">
-              {requiredPlan === "pro"
-                ? "Upgrade to Pro for unlimited AI generation and advanced business systems."
-                : "Upgrade to unlock advanced AI business tools."}
+              {trialAvailable
+                ? "Get 3 premium generations free — authorize PayPal, no charge for 7 days."
+                : requiredPlan === "pro"
+                  ? "Upgrade to Pro for unlimited AI generation and advanced business systems."
+                  : "Upgrade to unlock advanced AI business tools."}
             </p>
             <div className="flex gap-3 justify-center flex-wrap">
               {requiredPlan !== "pro" && (
                 <Button variant="hero" size="sm" onClick={() => handleUpgrade("creator")}>
-                  <Sparkles className="h-4 w-4" /> Creator — $19/mo
+                  <Sparkles className="h-4 w-4" /> {trialAvailable ? "Start free trial (Creator)" : "Creator — $19/mo"}
                 </Button>
               )}
               <Button variant="accent" size="sm" onClick={() => handleUpgrade("pro")}>
-                <Crown className="h-4 w-4" /> Pro — $49/mo
+                <Crown className="h-4 w-4" /> {trialAvailable ? "Start free trial (Pro)" : "Pro — $49/mo"}
               </Button>
             </div>
+          </div>
+        )}
+
+        {/* Trial-active status */}
+        {!toolLocked && trialActive && requiredPlan !== "free" && (
+          <div className="mb-4 flex items-center gap-2 rounded-lg border border-accent/30 bg-accent/5 p-3 text-sm text-accent">
+            <Sparkles className="h-4 w-4" />
+            <span>Premium trial active — <strong>{trialRemaining}</strong> premium generation{trialRemaining !== 1 ? "s" : ""} remaining.</span>
           </div>
         )}
 
