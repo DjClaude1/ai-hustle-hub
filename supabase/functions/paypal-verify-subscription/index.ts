@@ -46,19 +46,47 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Subscription does not belong to user" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const active = sub.status === "ACTIVE" || sub.status === "APPROVED";
+    const authorized = sub.status === "ACTIVE" || sub.status === "APPROVED" || sub.status === "APPROVAL_PENDING";
+    // Determine if the subscription is currently in the TRIAL cycle (no charge yet).
+    const cycleExec = sub.billing_info?.cycle_executions ?? [];
+    const trialCycle = cycleExec.find((c: any) => c.tenure_type === "TRIAL");
+    const regularCycle = cycleExec.find((c: any) => c.tenure_type === "REGULAR");
+    const paidCyclesDone = Number(regularCycle?.cycles_completed ?? 0);
+    const inTrial = paidCyclesDone === 0 && sub.status !== "CANCELLED" && sub.status !== "EXPIRED";
 
     await supabase.from("payments").update({
-      status: active ? "COMPLETE" : sub.status, updated_at: new Date().toISOString(),
+      status: sub.status === "ACTIVE" ? "TRIAL" : sub.status, updated_at: new Date().toISOString(),
     }).eq("subscription_id", subscriptionId);
 
-    if (active && (tier === "creator" || tier === "pro")) {
-      await supabase.from("profiles").update({
-        subscription_tier: tier, is_premium: true, updated_at: new Date().toISOString(),
-      }).eq("id", user.id);
+    if (authorized && (tier === "creator" || tier === "pro")) {
+      if (inTrial) {
+        // Start (or refresh) trial state — DO NOT upgrade paid tier yet.
+        const trialEnds = trialCycle?.next_billing_time
+          ? new Date(trialCycle.next_billing_time)
+          : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+        await supabase.from("profiles").update({
+          trial_active: true,
+          trial_started_at: new Date().toISOString(),
+          trial_ends_at: trialEnds.toISOString(),
+          trial_plan: tier,
+          paypal_subscription_id: subscriptionId,
+          subscription_status: "trial",
+          updated_at: new Date().toISOString(),
+        }).eq("id", user.id);
+      } else {
+        // Trial ended and a real payment happened → activate paid tier.
+        await supabase.from("profiles").update({
+          subscription_tier: tier,
+          is_premium: true,
+          trial_active: false,
+          subscription_status: "active",
+          paypal_subscription_id: subscriptionId,
+          updated_at: new Date().toISOString(),
+        }).eq("id", user.id);
+      }
     }
 
-    return new Response(JSON.stringify({ status: sub.status, tier, active }), {
+    return new Response(JSON.stringify({ status: sub.status, tier, active: authorized, inTrial }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {

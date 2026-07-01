@@ -430,7 +430,7 @@ const ToolPage = () => {
   const { toolId } = useParams<{ toolId: string }>();
   const tool = getToolById(toolId || "");
   const { user, session } = useAuth();
-  const { tier, isPro, isAdmin, dailyLimit, canAccessTool, getRequiredPlan: getReqPlan } = useSubscription();
+  const { tier, isPro, isAdmin, dailyLimit, canAccessTool, getRequiredPlan: getReqPlan, trialActive, trialAvailable, trialRemaining, refresh: refreshSub } = useSubscription();
   const navigate = useNavigate();
 
   const [inputValues, setInputValues] = useState<Record<string, string>>({});
@@ -621,7 +621,11 @@ const ToolPage = () => {
         if (err.code === "UPGRADE_REQUIRED") {
           setUpgradeRequired((err.required as PlanTier) || requiredPlan);
           setUpgradeOpen(true);
-          toast.error(err.error || "Upgrade required");
+          toast.error(err.trial_available ? "Start your free premium trial to use this tool." : (err.error || "Upgrade required"));
+        } else if (err.code === "TRIAL_EXHAUSTED") {
+          setUpgradeRequired((err.required as PlanTier) || requiredPlan);
+          setUpgradeOpen(true);
+          toast.error("Free trial exhausted — subscribe to keep going.");
         } else if (err.code === "DAILY_LIMIT" || err.code === "MONTHLY_LIMIT" || err.code === "LIMIT_REACHED") {
           setRemaining(0);
           toast.error(err.error || "Limit reached.");
@@ -694,6 +698,7 @@ const ToolPage = () => {
       }
 
       if (!isAdmin && remaining !== null) setRemaining(Math.max(0, remaining - 1));
+      void refreshSub();
 
       if (user && accumulated) {
         supabase.from("generations").insert({
@@ -813,7 +818,7 @@ const ToolPage = () => {
   };
 
   return (
-    <div className="min-h-screen pt-20 pb-16 bg-background">
+    <div className="min-h-screen pt-20 pb-16 bg-background md:pl-56">
       <div className="container max-w-2xl">
         <Link
           to="/dashboard"
@@ -841,28 +846,38 @@ const ToolPage = () => {
           )}
         </div>
 
-        {/* Tool locked paywall */}
+        {/* Tool locked paywall (with trial CTA) */}
         {toolLocked && (
           <div className="mb-4 rounded-xl border border-accent/30 bg-accent/5 p-6 text-center">
             <Lock className="h-8 w-8 text-accent mx-auto mb-2" />
             <h3 className="font-display text-lg font-semibold text-foreground">
-              {requiredPlan === "pro" ? "Pro-only tool" : "Creator+ tool"}
+              {trialAvailable ? "Try this premium tool free" : requiredPlan === "pro" ? "Pro-only tool" : "Creator+ tool"}
             </h3>
             <p className="text-sm text-muted-foreground mt-1 mb-4">
-              {requiredPlan === "pro"
-                ? "Upgrade to Pro for unlimited AI generation and advanced business systems."
-                : "Upgrade to unlock advanced AI business tools."}
+              {trialAvailable
+                ? "Get 3 premium generations free — authorize PayPal, no charge for 7 days."
+                : requiredPlan === "pro"
+                  ? "Upgrade to Pro for unlimited AI generation and advanced business systems."
+                  : "Upgrade to unlock advanced AI business tools."}
             </p>
             <div className="flex gap-3 justify-center flex-wrap">
               {requiredPlan !== "pro" && (
                 <Button variant="hero" size="sm" onClick={() => handleUpgrade("creator")}>
-                  <Sparkles className="h-4 w-4" /> Creator — $19/mo
+                  <Sparkles className="h-4 w-4" /> {trialAvailable ? "Start free trial (Creator)" : "Creator — $19/mo"}
                 </Button>
               )}
               <Button variant="accent" size="sm" onClick={() => handleUpgrade("pro")}>
-                <Crown className="h-4 w-4" /> Pro — $49/mo
+                <Crown className="h-4 w-4" /> {trialAvailable ? "Start free trial (Pro)" : "Pro — $49/mo"}
               </Button>
             </div>
+          </div>
+        )}
+
+        {/* Trial-active status */}
+        {!toolLocked && trialActive && requiredPlan !== "free" && (
+          <div className="mb-4 flex items-center gap-2 rounded-lg border border-accent/30 bg-accent/5 p-3 text-sm text-accent">
+            <Sparkles className="h-4 w-4" />
+            <span>Premium trial active — <strong>{trialRemaining}</strong> premium generation{trialRemaining !== 1 ? "s" : ""} remaining.</span>
           </div>
         )}
 
@@ -1052,6 +1067,8 @@ const ToolPage = () => {
         onClose={() => setUpgradeOpen(false)}
         onUpgrade={(t) => { setUpgradeOpen(false); void handleUpgrade(t); }}
         requiredPlan={upgradeRequired}
+        trialAvailable={trialAvailable}
+        trialExhausted={!trialActive && trialRemaining === 0 && !trialAvailable}
       />
     </div>
   );
