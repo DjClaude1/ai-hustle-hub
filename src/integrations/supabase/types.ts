@@ -155,7 +155,15 @@ export type Database = {
           is_premium: boolean
           last_generation_date: string | null
           last_generation_month: string | null
+          paypal_subscription_id: string | null
+          premium_trial_limit: number
+          premium_trial_used: number
+          subscription_status: string
           subscription_tier: string
+          trial_active: boolean
+          trial_ends_at: string | null
+          trial_plan: string | null
+          trial_started_at: string | null
           updated_at: string
         }
         Insert: {
@@ -169,7 +177,15 @@ export type Database = {
           is_premium?: boolean
           last_generation_date?: string | null
           last_generation_month?: string | null
+          paypal_subscription_id?: string | null
+          premium_trial_limit?: number
+          premium_trial_used?: number
+          subscription_status?: string
           subscription_tier?: string
+          trial_active?: boolean
+          trial_ends_at?: string | null
+          trial_plan?: string | null
+          trial_started_at?: string | null
           updated_at?: string
         }
         Update: {
@@ -183,7 +199,15 @@ export type Database = {
           is_premium?: boolean
           last_generation_date?: string | null
           last_generation_month?: string | null
+          paypal_subscription_id?: string | null
+          premium_trial_limit?: number
+          premium_trial_used?: number
+          subscription_status?: string
           subscription_tier?: string
+          trial_active?: boolean
+          trial_ends_at?: string | null
+          trial_plan?: string | null
+          trial_started_at?: string | null
           updated_at?: string
         }
         Relationships: []
