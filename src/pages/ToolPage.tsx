@@ -1067,6 +1067,8 @@ const ToolPage = () => {
         onClose={() => setUpgradeOpen(false)}
         onUpgrade={(t) => { setUpgradeOpen(false); void handleUpgrade(t); }}
         requiredPlan={upgradeRequired}
+        trialAvailable={trialAvailable}
+        trialExhausted={!trialActive && trialRemaining === 0 && !trialAvailable}
       />
     </div>
   );
