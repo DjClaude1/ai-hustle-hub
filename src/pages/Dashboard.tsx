@@ -185,20 +185,62 @@ const Dashboard = () => {
           )}
         </div>
 
+        {/* Trial active banner */}
+        {user && trialActive && (
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-accent/40 bg-gradient-to-r from-accent/10 via-primary/5 to-transparent p-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent/15 text-accent">
+                <Sparkles className="h-4 w-4" />
+              </div>
+              <div>
+                <div className="font-display text-sm font-semibold text-foreground">
+                  Premium trial active — {trialRemaining} generation{trialRemaining !== 1 ? "s" : ""} remaining
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {trialEndsAt ? `Trial ends ${new Date(trialEndsAt).toLocaleDateString()}. ` : ""}
+                  After 3 generations or 7 days, your subscription activates automatically.
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Trial exhausted banner */}
+        {user && !trialActive && trialLimit - trialRemaining >= trialLimit && tier === "free" && !isAdmin && !trialAvailable && (
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-4">
+            <div className="flex items-center gap-3">
+              <Lock className="h-4 w-4 text-destructive" />
+              <div>
+                <div className="font-display text-sm font-semibold text-foreground">Free trial used up</div>
+                <div className="text-xs text-muted-foreground">Subscribe to keep unlimited premium access.</div>
+              </div>
+            </div>
+            <Button variant="hero" size="sm" onClick={() => { setModalRequired("creator"); setModalReason(undefined); setModalOpen(true); }}>
+              Subscribe
+            </Button>
+          </div>
+        )}
+
         {/* Free upgrade banner */}
-        {user && tier === "free" && !isAdmin && (
+        {user && tier === "free" && !isAdmin && !trialActive && (
           <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/30 bg-gradient-to-r from-primary/10 via-accent/5 to-transparent p-4">
             <div className="flex items-center gap-3">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/15 text-primary">
                 <Zap className="h-4 w-4" />
               </div>
               <div>
-                <div className="font-display text-sm font-semibold text-foreground">You're on the Free plan</div>
-                <div className="text-xs text-muted-foreground">5 generations/day · 7 free tools · 7-day history. Upgrade for full access.</div>
+                <div className="font-display text-sm font-semibold text-foreground">
+                  {trialAvailable ? "Try premium free — 3 generations on us" : "You're on the Free plan"}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {trialAvailable
+                    ? "Authorize PayPal, no charge for 7 days. Cancel anytime."
+                    : "5 generations/day · 7 free tools · 7-day history."}
+                </div>
               </div>
             </div>
             <Button variant="hero" size="sm" onClick={() => { setModalRequired("creator"); setModalReason(undefined); setModalOpen(true); }}>
-              View plans
+              {trialAvailable ? "Start free trial" : "View plans"}
             </Button>
           </div>
         )}
