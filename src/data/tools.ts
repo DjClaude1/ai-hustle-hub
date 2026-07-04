@@ -5,7 +5,7 @@ import {
   Youtube, Film, Lightbulb, ImageIcon, PenTool,
   Briefcase, Send, User, FileSignature,
   Rocket, Building2, ClipboardList, Cpu, TrendingUp,
-  Package,
+  Package, Clapperboard,
 } from "lucide-react";
 
 export type ToolCategory =
@@ -321,6 +321,16 @@ export const tools: Tool[] = [
       { key: "goal", label: "Video Goal", placeholder: "Select goal", type: "select", options: ["Go Viral", "Drive Traffic", "Build Authority", "Sell Product", "Grow Followers"] },
       { key: "niche", label: "Your Niche", placeholder: "e.g., Finance tips, day-in-life, tech reviews", type: "text" },
     ],
+  },
+  {
+    id: "faceless-video-studio",
+    name: "Faceless Video Studio",
+    description: "AI writes the script, splits it into scenes, fetches Pexels footage, adds AI narration and stitches a downloadable MP4",
+    category: "Content Creation",
+    icon: Clapperboard,
+    prompt: "",
+    inputs: [],
+    premium: true,
   },
   {
     id: "faceless-video",
