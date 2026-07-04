@@ -17,6 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { SharePanel } from "@/components/SharePanel";
 import { ProductPreview } from "@/components/ProductPreview";
 import { UpgradeModal } from "@/components/UpgradeModal";
+import { DownloadMenu } from "@/components/DownloadMenu";
 import { getRequiredPlan, type PlanTier } from "@/lib/plans";
 import { buildManualGenerationBrief, extractBasicCvData, isAiCreditsError } from "@/lib/aiFallbacks";
 
@@ -445,6 +446,7 @@ const ToolPage = () => {
   const [upgradeRequired, setUpgradeRequired] = useState<PlanTier>("creator");
   const abortRef = useRef<AbortController | null>(null);
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const previewRef = useRef<HTMLDivElement>(null);
 
   // Load draft on mount
   useEffect(() => {
@@ -994,13 +996,16 @@ const ToolPage = () => {
                     {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
                     {copied ? "Copied" : "Copy"}
                   </Button>
-                  <Button variant="outline" size="sm" onClick={handleDownload}>
-                    <Download className="h-3.5 w-3.5" /> Download
-                  </Button>
+                  <DownloadMenu
+                    content={output}
+                    filename={`${tool.id}-output`}
+                    previewRef={previewRef}
+                  />
                 </div>
               )}
             </div>
             {output ? (
+              <div ref={previewRef}>
               <ProductPreview
                 toolId={tool.id}
                 category={tool.category}
