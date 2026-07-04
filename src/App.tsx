@@ -14,6 +14,7 @@ import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import HistoryPage from "./pages/HistoryPage";
 import Blueprint from "./pages/Blueprint";
+import FacelessVideoPage from "./pages/FacelessVideoPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -42,6 +43,7 @@ const App = () => (
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/blueprint" element={<Blueprint />} />
             <Route path="/tool/ai-image-generator" element={<ImageGeneratorPage />} />
+            <Route path="/tool/faceless-video-studio" element={<FacelessVideoPage />} />
             <Route path="/tool/:toolId" element={<ToolPage />} />
             <Route path="/history" element={<HistoryPage />} />
             <Route path="*" element={<NotFound />} />
