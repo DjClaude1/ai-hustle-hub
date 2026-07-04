@@ -4,8 +4,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { ScrollReveal } from "@/components/ScrollReveal";
 import { getToolById } from "@/data/tools";
-import { ArrowLeft, Clock, Trash2, Copy, Download, ExternalLink } from "lucide-react";
+import { ArrowLeft, Clock, Trash2, Copy, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { DownloadMenu } from "@/components/DownloadMenu";
 import { toast } from "sonner";
 
 interface Generation {
@@ -126,6 +127,7 @@ const HistoryPage = () => {
                           <Button variant="outline" size="sm" onClick={() => handleCopy(gen.output)}>
                             <Copy className="h-3.5 w-3.5" /> Copy
                           </Button>
+                          <DownloadMenu content={gen.output} filename={`${gen.tool_id}-${gen.id.slice(0, 6)}`} />
                           <Link to={`/tool/${gen.tool_id}`}>
                             <Button variant="outline" size="sm">
                               <ExternalLink className="h-3.5 w-3.5" /> Open Tool
