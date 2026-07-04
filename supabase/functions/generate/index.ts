@@ -156,7 +156,7 @@ const FREE_TOOLS = new Set([
 ]);
 const PRO_TOOLS = new Set([
   "competitor-analyzer", "business-plan", "ai-startup",
-  "income-strategy", "business-in-a-box",
+  "income-strategy", "business-in-a-box", "faceless-video-studio",
 ]);
 function requiredPlanFor(toolId: string): "free" | "creator" | "pro" {
   if (!toolId) return "creator";

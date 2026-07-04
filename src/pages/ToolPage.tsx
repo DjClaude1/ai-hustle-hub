@@ -17,6 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { SharePanel } from "@/components/SharePanel";
 import { ProductPreview } from "@/components/ProductPreview";
 import { UpgradeModal } from "@/components/UpgradeModal";
+import { DownloadMenu } from "@/components/DownloadMenu";
 import { getRequiredPlan, type PlanTier } from "@/lib/plans";
 import { buildManualGenerationBrief, extractBasicCvData, isAiCreditsError } from "@/lib/aiFallbacks";
 
@@ -445,6 +446,7 @@ const ToolPage = () => {
   const [upgradeRequired, setUpgradeRequired] = useState<PlanTier>("creator");
   const abortRef = useRef<AbortController | null>(null);
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const previewRef = useRef<HTMLDivElement>(null);
 
   // Load draft on mount
   useEffect(() => {
@@ -994,30 +996,36 @@ const ToolPage = () => {
                     {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
                     {copied ? "Copied" : "Copy"}
                   </Button>
-                  <Button variant="outline" size="sm" onClick={handleDownload}>
-                    <Download className="h-3.5 w-3.5" /> Download
-                  </Button>
+                  <DownloadMenu
+                    content={output}
+                    filename={`${tool.id}-output`}
+                    previewRef={previewRef}
+                  />
                 </div>
               )}
             </div>
             {output ? (
-              <ProductPreview
-                toolId={tool.id}
-                category={tool.category}
-                toolName={tool.name}
-                output={output}
-                inputs={inputValues}
-                templateId={selectedTemplate}
-              />
+              <div ref={previewRef}>
+                <ProductPreview
+                  toolId={tool.id}
+                  category={tool.category}
+                  toolName={tool.name}
+                  output={output}
+                  inputs={inputValues}
+                  templateId={selectedTemplate}
+                />
+              </div>
             ) : tool.id === "resume-builder" ? (
-              <ProductPreview
-                toolId={tool.id}
-                category={tool.category}
-                toolName={tool.name}
-                output={`# ${inputValues.name || "Your Name"}\n\n${inputValues.email || "your.email@example.com"} · ${inputValues.phone || "+1 (555) 000-0000"} · ${inputValues.location || "City, Country"}\n\n## Professional Summary\n\n${inputValues.summary || "A short professional summary will appear here once you generate your resume. The styling, fonts, colors, and layout you see now reflect the selected template."}\n\n## Experience\n\n### ${inputValues.jobTitle || "Most Recent Role"} — ${inputValues.company || "Company Name"}\n*Date Range · Location*\n\n- Achievement bullet showcasing impact and metrics.\n- Another achievement highlighting leadership and results.\n- Third bullet demonstrating relevant skills and outcomes.\n\n## Education\n\n### ${inputValues.degree || "Degree"} — ${inputValues.school || "Institution"}\n\n## Skills\n\n- **Core:** ${inputValues.skills || "Skill 1, Skill 2, Skill 3, Skill 4"}\n- **Tools:** Add your tools and technologies here\n`}
-                inputs={inputValues}
-                templateId={selectedTemplate}
-              />
+              <div ref={previewRef}>
+                <ProductPreview
+                  toolId={tool.id}
+                  category={tool.category}
+                  toolName={tool.name}
+                  output={`# ${inputValues.name || "Your Name"}\n\n${inputValues.email || "your.email@example.com"} · ${inputValues.phone || "+1 (555) 000-0000"} · ${inputValues.location || "City, Country"}\n\n## Professional Summary\n\n${inputValues.summary || "A short professional summary will appear here once you generate your resume. The styling, fonts, colors, and layout you see now reflect the selected template."}\n\n## Experience\n\n### ${inputValues.jobTitle || "Most Recent Role"} — ${inputValues.company || "Company Name"}\n*Date Range · Location*\n\n- Achievement bullet showcasing impact and metrics.\n- Another achievement highlighting leadership and results.\n- Third bullet demonstrating relevant skills and outcomes.\n\n## Education\n\n### ${inputValues.degree || "Degree"} — ${inputValues.school || "Institution"}\n\n## Skills\n\n- **Core:** ${inputValues.skills || "Skill 1, Skill 2, Skill 3, Skill 4"}\n- **Tools:** Add your tools and technologies here\n`}
+                  inputs={inputValues}
+                  templateId={selectedTemplate}
+                />
+              </div>
             ) : (
               <div className="rounded-lg border border-border bg-secondary/50 p-6 text-sm text-foreground">
                 <span className="text-muted-foreground animate-pulse">Generating your {tool.name.toLowerCase()}…</span>

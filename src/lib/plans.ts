@@ -105,6 +105,7 @@ const PRO_TOOLS = new Set<string>([
   "ai-startup",
   "income-strategy",
   "business-in-a-box",
+  "faceless-video-studio",
 ]);
 
 export const getRequiredPlan = (toolId: string): PlanTier => {
