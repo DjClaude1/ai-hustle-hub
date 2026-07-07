@@ -28,20 +28,42 @@ export interface StitchInput {
   proxyBase: string; // e.g. `${VITE_SUPABASE_URL}/functions/v1/fetch-media`
 }
 
-const CORE_BASE = "https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd";
+// Try multiple CDNs — unpkg occasionally 404s or has CORS blips.
+const CORE_BASES = [
+  "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd",
+  "https://unpkg.com/@ffmpeg/core@0.12.10/dist/umd",
+  "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd",
+];
 
 let ffmpegSingleton: FFmpeg | null = null;
+
+async function tryLoadCore(base: string): Promise<{ coreURL: string; wasmURL: string }> {
+  const coreURL = await toBlobURL(`${base}/ffmpeg-core.js`, "text/javascript");
+  const wasmURL = await toBlobURL(`${base}/ffmpeg-core.wasm`, "application/wasm");
+  return { coreURL, wasmURL };
+}
 
 async function getFFmpeg(onLog?: (m: string) => void): Promise<FFmpeg> {
   if (ffmpegSingleton) return ffmpegSingleton;
   const ff = new FFmpeg();
   if (onLog) ff.on("log", ({ message }) => onLog(message));
-  await ff.load({
-    coreURL: await toBlobURL(`${CORE_BASE}/ffmpeg-core.js`, "text/javascript"),
-    wasmURL: await toBlobURL(`${CORE_BASE}/ffmpeg-core.wasm`, "application/wasm"),
-  });
-  ffmpegSingleton = ff;
-  return ff;
+
+  let lastErr: unknown = null;
+  for (const base of CORE_BASES) {
+    try {
+      const urls = await tryLoadCore(base);
+      await ff.load(urls);
+      ffmpegSingleton = ff;
+      return ff;
+    } catch (e) {
+      console.warn("ffmpeg core load failed from", base, e);
+      lastErr = e;
+    }
+  }
+  throw new Error(
+    "Could not load ffmpeg-core from any CDN. Check network/ad-blocker. " +
+      (lastErr instanceof Error ? lastErr.message : String(lastErr))
+  );
 }
 
 const escapeDrawtext = (s: string) =>
