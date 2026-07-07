@@ -5,6 +5,8 @@
 
 import { FFmpeg } from "@ffmpeg/ffmpeg";
 import { fetchFile, toBlobURL } from "@ffmpeg/util";
+import coreURLLocal from "@ffmpeg/core/dist/umd/ffmpeg-core.js?url";
+import wasmURLLocal from "@ffmpeg/core/dist/umd/ffmpeg-core.wasm?url";
 
 export interface Scene {
   narration: string;
