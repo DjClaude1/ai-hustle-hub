@@ -50,6 +50,17 @@ async function getFFmpeg(onLog?: (m: string) => void): Promise<FFmpeg> {
   const ff = new FFmpeg();
   if (onLog) ff.on("log", ({ message }) => onLog(message));
 
+  // Prefer locally-bundled core (served same-origin by Vite) — most reliable.
+  try {
+    const coreURL = await toBlobURL(coreURLLocal, "text/javascript");
+    const wasmURL = await toBlobURL(wasmURLLocal, "application/wasm");
+    await ff.load({ coreURL, wasmURL });
+    ffmpegSingleton = ff;
+    return ff;
+  } catch (e) {
+    console.warn("Local ffmpeg core load failed, trying CDN fallbacks", e);
+  }
+
   let lastErr: unknown = null;
   for (const base of CORE_BASES) {
     try {
@@ -63,7 +74,7 @@ async function getFFmpeg(onLog?: (m: string) => void): Promise<FFmpeg> {
     }
   }
   throw new Error(
-    "Could not load ffmpeg-core from any CDN. Check network/ad-blocker. " +
+    "Could not load ffmpeg-core. Check network/ad-blocker. " +
       (lastErr instanceof Error ? lastErr.message : String(lastErr))
   );
 }
