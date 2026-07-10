@@ -10,8 +10,10 @@ import wasmURLBundled from "@ffmpeg/core/wasm?url";
 import wasmAsset from "../assets/ffmpeg-core.wasm.asset.json";
 
 // Use the ESM core. The @ffmpeg/ffmpeg worker is a module worker, so UMD
-// ffmpeg-core.js URLs fail with "failed to import ffmpeg-core.js".
-const wasmURLLocal = (wasmAsset as { url?: string }).url || wasmURLBundled;
+// ffmpeg-core.js URLs fail with "failed to import ffmpeg-core.js". In dev,
+// Lovable asset CDN paths are not served by localhost, so use Vite's bundled
+// wasm URL locally and the CDN asset after publishing.
+const wasmURLLocal = import.meta.env.DEV ? wasmURLBundled : (wasmAsset as { url?: string }).url || wasmURLBundled;
 
 export interface Scene {
   narration: string;
