@@ -96,14 +96,6 @@ async function getFFmpeg(onLog?: (m: string) => void): Promise<FFmpeg> {
   );
 }
 
-const escapeDrawtext = (s: string) =>
-  s.replace(/\\/g, "\\\\")
-    .replace(/:/g, "\\:")
-    .replace(/'/g, "\u2019")
-    .replace(/,/g, "\\,")
-    .replace(/\n/g, " ")
-    .slice(0, 80);
-
 export async function stitchFacelessVideo(input: StitchInput): Promise<Blob> {
   const { scenes, clips, narrationBlobs, format, musicBlob, onProgress, proxyBase } = input;
   if (scenes.length !== clips.length || scenes.length !== narrationBlobs.length) {
@@ -146,17 +138,15 @@ export async function stitchFacelessVideo(input: StitchInput): Promise<Blob> {
     const narrName = `narr_${i}.mp3`;
     await ff.writeFile(narrName, narrData);
 
-    const caption = escapeDrawtext(scene.caption || "");
     const dur = scene.duration_sec;
     const outName = `scene_${i}.mp4`;
 
-    // Video filter: scale to cover, crop to output, add caption text at bottom
+    // Video filter: scale to cover and crop to output. Captions are kept in the
+    // script preview; burning text into ffmpeg.wasm requires a bundled font file
+    // and fails in browser runtimes when no font is present.
     const vf = [
       `scale=${outW}:${outH}:force_original_aspect_ratio=increase`,
       `crop=${outW}:${outH}`,
-      caption
-        ? `drawtext=text='${caption}':fontcolor=white:fontsize=${isShort ? 42 : 36}:borderw=3:bordercolor=black@0.8:x=(w-text_w)/2:y=h-text_h-${isShort ? 140 : 80}`
-        : "",
       "setsar=1",
     ].filter(Boolean).join(",");
 
