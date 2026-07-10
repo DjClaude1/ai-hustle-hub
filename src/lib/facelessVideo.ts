@@ -5,11 +5,15 @@
 
 import { FFmpeg } from "@ffmpeg/ffmpeg";
 import { fetchFile, toBlobURL } from "@ffmpeg/util";
-import wasmAsset from "../../public/ffmpeg/ffmpeg-core.wasm.asset.json";
+import coreURLLocal from "@ffmpeg/core?url";
+import wasmURLBundled from "@ffmpeg/core/wasm?url";
+import wasmAsset from "../assets/ffmpeg-core.wasm.asset.json";
 
-// Local ffmpeg-core.js served from /public; wasm served from Lovable asset CDN.
-const coreURLLocal = "/ffmpeg/ffmpeg-core.js";
-const wasmURLLocal = (wasmAsset as { url: string }).url;
+// Use the ESM core. The @ffmpeg/ffmpeg worker is a module worker, so UMD
+// ffmpeg-core.js URLs fail with "failed to import ffmpeg-core.js". In dev,
+// Lovable asset CDN paths are not served by localhost, so use Vite's bundled
+// wasm URL locally and the CDN asset after publishing.
+const wasmURLLocal = import.meta.env.DEV ? wasmURLBundled : (wasmAsset as { url?: string }).url || wasmURLBundled;
 
 export interface Scene {
   narration: string;
@@ -33,14 +37,15 @@ export interface StitchInput {
   proxyBase: string; // e.g. `${VITE_SUPABASE_URL}/functions/v1/fetch-media`
 }
 
-// Try multiple CDNs — unpkg occasionally 404s or has CORS blips.
+// Try multiple ESM CDNs — UMD core cannot be dynamically imported by the module worker.
 const CORE_BASES = [
-  "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd",
-  "https://unpkg.com/@ffmpeg/core@0.12.10/dist/umd",
-  "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd",
+  "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/esm",
+  "https://unpkg.com/@ffmpeg/core@0.12.10/dist/esm",
+  "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm",
 ];
 
 let ffmpegSingleton: FFmpeg | null = null;
+let ffmpegLogHandlerAttached = false;
 
 async function tryLoadCore(base: string): Promise<{ coreURL: string; wasmURL: string }> {
   const coreURL = await toBlobURL(`${base}/ffmpeg-core.js`, "text/javascript");
@@ -49,11 +54,20 @@ async function tryLoadCore(base: string): Promise<{ coreURL: string; wasmURL: st
 }
 
 async function getFFmpeg(onLog?: (m: string) => void): Promise<FFmpeg> {
-  if (ffmpegSingleton) return ffmpegSingleton;
+  if (ffmpegSingleton) {
+    if (onLog && !ffmpegLogHandlerAttached) {
+      ffmpegSingleton.on("log", ({ message }) => onLog(message));
+      ffmpegLogHandlerAttached = true;
+    }
+    return ffmpegSingleton;
+  }
   const ff = new FFmpeg();
-  if (onLog) ff.on("log", ({ message }) => onLog(message));
+  if (onLog) {
+    ff.on("log", ({ message }) => onLog(message));
+    ffmpegLogHandlerAttached = true;
+  }
 
-  // Prefer locally-bundled core (served same-origin by Vite) — most reliable.
+  // Prefer locally-bundled ESM core (served same-origin by Vite) — most reliable.
   try {
     const coreURL = await toBlobURL(coreURLLocal, "text/javascript");
     const wasmURL = await toBlobURL(wasmURLLocal, "application/wasm");
@@ -82,14 +96,6 @@ async function getFFmpeg(onLog?: (m: string) => void): Promise<FFmpeg> {
   );
 }
 
-const escapeDrawtext = (s: string) =>
-  s.replace(/\\/g, "\\\\")
-    .replace(/:/g, "\\:")
-    .replace(/'/g, "\u2019")
-    .replace(/,/g, "\\,")
-    .replace(/\n/g, " ")
-    .slice(0, 80);
-
 export async function stitchFacelessVideo(input: StitchInput): Promise<Blob> {
   const { scenes, clips, narrationBlobs, format, musicBlob, onProgress, proxyBase } = input;
   if (scenes.length !== clips.length || scenes.length !== narrationBlobs.length) {
@@ -100,9 +106,20 @@ export async function stitchFacelessVideo(input: StitchInput): Promise<Blob> {
   const outW = isShort ? 720 : 1280;
   const outH = isShort ? 1280 : 720;
 
-  const ff = await getFFmpeg();
+  const ffmpegLogs: string[] = [];
+  const ff = await getFFmpeg((message) => {
+    ffmpegLogs.push(message);
+    if (ffmpegLogs.length > 80) ffmpegLogs.shift();
+  });
   const total = scenes.length;
   const report = (p: number, l: string) => onProgress?.(Math.max(0, Math.min(99, p)), l);
+  const run = async (args: string[], label: string) => {
+    const code = await ff.exec(args);
+    if (code !== 0) {
+      const details = ffmpegLogs.slice(-12).join("\n");
+      throw new Error(`${label} failed in video renderer.${details ? `\n${details}` : ""}`);
+    }
+  };
 
   // Write assets & normalize each scene
   const sceneFiles: string[] = [];
@@ -121,21 +138,19 @@ export async function stitchFacelessVideo(input: StitchInput): Promise<Blob> {
     const narrName = `narr_${i}.mp3`;
     await ff.writeFile(narrName, narrData);
 
-    const caption = escapeDrawtext(scene.caption || "");
     const dur = scene.duration_sec;
     const outName = `scene_${i}.mp4`;
 
-    // Video filter: scale to cover, crop to output, add caption text at bottom
+    // Video filter: scale to cover and crop to output. Captions are kept in the
+    // script preview; burning text into ffmpeg.wasm requires a bundled font file
+    // and fails in browser runtimes when no font is present.
     const vf = [
       `scale=${outW}:${outH}:force_original_aspect_ratio=increase`,
       `crop=${outW}:${outH}`,
-      caption
-        ? `drawtext=text='${caption}':fontcolor=white:fontsize=${isShort ? 42 : 36}:borderw=3:bordercolor=black@0.8:x=(w-text_w)/2:y=h-text_h-${isShort ? 140 : 80}`
-        : "",
       "setsar=1",
     ].filter(Boolean).join(",");
 
-    await ff.exec([
+    await run([
       "-y",
       "-t", String(dur),
       "-stream_loop", "-1",
@@ -156,7 +171,7 @@ export async function stitchFacelessVideo(input: StitchInput): Promise<Blob> {
       "-map", "0:v:0",
       "-map", "1:a:0",
       outName,
-    ]);
+    ], `Scene ${i + 1}`);
 
     // Free the input clip to keep memory low
     try { await ff.deleteFile(clipName); } catch { /* noop */ }
@@ -171,13 +186,13 @@ export async function stitchFacelessVideo(input: StitchInput): Promise<Blob> {
   const finalName = "final.mp4";
   if (musicBlob) {
     // Concat then mix background music
-    await ff.exec([
+    await run([
       "-y", "-f", "concat", "-safe", "0", "-i", "list.txt",
       "-c", "copy", "concat.mp4",
-    ]);
+    ], "Scene stitching");
     const mus = new Uint8Array(await musicBlob.arrayBuffer());
     await ff.writeFile("music.mp3", mus);
-    await ff.exec([
+    await run([
       "-y",
       "-i", "concat.mp4",
       "-i", "music.mp3",
@@ -187,12 +202,12 @@ export async function stitchFacelessVideo(input: StitchInput): Promise<Blob> {
       "-c:a", "aac", "-b:a", "160k",
       "-shortest",
       finalName,
-    ]);
+    ], "Music mix");
   } else {
-    await ff.exec([
+    await run([
       "-y", "-f", "concat", "-safe", "0", "-i", "list.txt",
       "-c", "copy", finalName,
-    ]);
+    ], "Scene stitching");
   }
 
   report(95, "Finalizing");
