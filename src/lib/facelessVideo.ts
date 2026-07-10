@@ -5,8 +5,11 @@
 
 import { FFmpeg } from "@ffmpeg/ffmpeg";
 import { fetchFile, toBlobURL } from "@ffmpeg/util";
-import coreURLLocal from "@ffmpeg/core/dist/umd/ffmpeg-core.js?url";
-import wasmURLLocal from "@ffmpeg/core/dist/umd/ffmpeg-core.wasm?url";
+import wasmAsset from "../../public/ffmpeg/ffmpeg-core.wasm.asset.json";
+
+// Local ffmpeg-core.js served from /public; wasm served from Lovable asset CDN.
+const coreURLLocal = "/ffmpeg/ffmpeg-core.js";
+const wasmURLLocal = (wasmAsset as { url: string }).url;
 
 export interface Scene {
   narration: string;
