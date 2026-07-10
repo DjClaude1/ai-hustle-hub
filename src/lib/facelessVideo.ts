@@ -5,11 +5,13 @@
 
 import { FFmpeg } from "@ffmpeg/ffmpeg";
 import { fetchFile, toBlobURL } from "@ffmpeg/util";
-import wasmAsset from "../../public/ffmpeg/ffmpeg-core.wasm.asset.json";
+import coreURLLocal from "@ffmpeg/core?url";
+import wasmURLBundled from "@ffmpeg/core/wasm?url";
+import wasmAsset from "../assets/ffmpeg-core.wasm.asset.json";
 
-// Local ffmpeg-core.js served from /public; wasm served from Lovable asset CDN.
-const coreURLLocal = "/ffmpeg/ffmpeg-core.js";
-const wasmURLLocal = (wasmAsset as { url: string }).url;
+// Use the ESM core. The @ffmpeg/ffmpeg worker is a module worker, so UMD
+// ffmpeg-core.js URLs fail with "failed to import ffmpeg-core.js".
+const wasmURLLocal = (wasmAsset as { url?: string }).url || wasmURLBundled;
 
 export interface Scene {
   narration: string;
@@ -33,11 +35,11 @@ export interface StitchInput {
   proxyBase: string; // e.g. `${VITE_SUPABASE_URL}/functions/v1/fetch-media`
 }
 
-// Try multiple CDNs — unpkg occasionally 404s or has CORS blips.
+// Try multiple ESM CDNs — UMD core cannot be dynamically imported by the module worker.
 const CORE_BASES = [
-  "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd",
-  "https://unpkg.com/@ffmpeg/core@0.12.10/dist/umd",
-  "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd",
+  "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/esm",
+  "https://unpkg.com/@ffmpeg/core@0.12.10/dist/esm",
+  "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm",
 ];
 
 let ffmpegSingleton: FFmpeg | null = null;
@@ -53,7 +55,7 @@ async function getFFmpeg(onLog?: (m: string) => void): Promise<FFmpeg> {
   const ff = new FFmpeg();
   if (onLog) ff.on("log", ({ message }) => onLog(message));
 
-  // Prefer locally-bundled core (served same-origin by Vite) — most reliable.
+  // Prefer locally-bundled ESM core (served same-origin by Vite) — most reliable.
   try {
     const coreURL = await toBlobURL(coreURLLocal, "text/javascript");
     const wasmURL = await toBlobURL(wasmURLLocal, "application/wasm");
