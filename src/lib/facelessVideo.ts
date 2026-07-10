@@ -45,6 +45,7 @@ const CORE_BASES = [
 ];
 
 let ffmpegSingleton: FFmpeg | null = null;
+let ffmpegLogHandlerAttached = false;
 
 async function tryLoadCore(base: string): Promise<{ coreURL: string; wasmURL: string }> {
   const coreURL = await toBlobURL(`${base}/ffmpeg-core.js`, "text/javascript");
@@ -53,9 +54,18 @@ async function tryLoadCore(base: string): Promise<{ coreURL: string; wasmURL: st
 }
 
 async function getFFmpeg(onLog?: (m: string) => void): Promise<FFmpeg> {
-  if (ffmpegSingleton) return ffmpegSingleton;
+  if (ffmpegSingleton) {
+    if (onLog && !ffmpegLogHandlerAttached) {
+      ffmpegSingleton.on("log", ({ message }) => onLog(message));
+      ffmpegLogHandlerAttached = true;
+    }
+    return ffmpegSingleton;
+  }
   const ff = new FFmpeg();
-  if (onLog) ff.on("log", ({ message }) => onLog(message));
+  if (onLog) {
+    ff.on("log", ({ message }) => onLog(message));
+    ffmpegLogHandlerAttached = true;
+  }
 
   // Prefer locally-bundled ESM core (served same-origin by Vite) — most reliable.
   try {
@@ -104,9 +114,20 @@ export async function stitchFacelessVideo(input: StitchInput): Promise<Blob> {
   const outW = isShort ? 720 : 1280;
   const outH = isShort ? 1280 : 720;
 
-  const ff = await getFFmpeg();
+  const ffmpegLogs: string[] = [];
+  const ff = await getFFmpeg((message) => {
+    ffmpegLogs.push(message);
+    if (ffmpegLogs.length > 80) ffmpegLogs.shift();
+  });
   const total = scenes.length;
   const report = (p: number, l: string) => onProgress?.(Math.max(0, Math.min(99, p)), l);
+  const run = async (args: string[], label: string) => {
+    const code = await ff.exec(args);
+    if (code !== 0) {
+      const details = ffmpegLogs.slice(-12).join("\n");
+      throw new Error(`${label} failed in video renderer.${details ? `\n${details}` : ""}`);
+    }
+  };
 
   // Write assets & normalize each scene
   const sceneFiles: string[] = [];
@@ -139,7 +160,7 @@ export async function stitchFacelessVideo(input: StitchInput): Promise<Blob> {
       "setsar=1",
     ].filter(Boolean).join(",");
 
-    await ff.exec([
+    await run([
       "-y",
       "-t", String(dur),
       "-stream_loop", "-1",
@@ -160,7 +181,7 @@ export async function stitchFacelessVideo(input: StitchInput): Promise<Blob> {
       "-map", "0:v:0",
       "-map", "1:a:0",
       outName,
-    ]);
+    ], `Scene ${i + 1}`);
 
     // Free the input clip to keep memory low
     try { await ff.deleteFile(clipName); } catch { /* noop */ }
@@ -175,13 +196,13 @@ export async function stitchFacelessVideo(input: StitchInput): Promise<Blob> {
   const finalName = "final.mp4";
   if (musicBlob) {
     // Concat then mix background music
-    await ff.exec([
+    await run([
       "-y", "-f", "concat", "-safe", "0", "-i", "list.txt",
       "-c", "copy", "concat.mp4",
-    ]);
+    ], "Scene stitching");
     const mus = new Uint8Array(await musicBlob.arrayBuffer());
     await ff.writeFile("music.mp3", mus);
-    await ff.exec([
+    await run([
       "-y",
       "-i", "concat.mp4",
       "-i", "music.mp3",
@@ -191,12 +212,12 @@ export async function stitchFacelessVideo(input: StitchInput): Promise<Blob> {
       "-c:a", "aac", "-b:a", "160k",
       "-shortest",
       finalName,
-    ]);
+    ], "Music mix");
   } else {
-    await ff.exec([
+    await run([
       "-y", "-f", "concat", "-safe", "0", "-i", "list.txt",
       "-c", "copy", finalName,
-    ]);
+    ], "Scene stitching");
   }
 
   report(95, "Finalizing");
