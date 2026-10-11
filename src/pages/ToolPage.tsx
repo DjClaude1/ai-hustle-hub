@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import {
   ArrowLeft, Copy, Download, Loader2, Sparkles, Check,
   Upload, Save, History, Clock, Trash2, AlertTriangle,
-  Crown, FileText, Lock,
+  Crown, FileText, Lock, Pencil, Eye,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
@@ -442,6 +442,7 @@ const ToolPage = () => {
   const [remaining, setRemaining] = useState<number | null>(null);
   const [draftSaving, setDraftSaving] = useState(false);
   const [generationFallback, setGenerationFallback] = useState<GenerationFallback | null>(null);
+  const [editingOutput, setEditingOutput] = useState(false);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [upgradeRequired, setUpgradeRequired] = useState<PlanTier>("creator");
   const abortRef = useRef<AbortController | null>(null);
