@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import {
   ArrowLeft, Copy, Download, Loader2, Sparkles, Check,
   Upload, Save, History, Clock, Trash2, AlertTriangle,
-  Crown, FileText, Lock,
+  Crown, FileText, Lock, Pencil, Eye,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
@@ -442,6 +442,7 @@ const ToolPage = () => {
   const [remaining, setRemaining] = useState<number | null>(null);
   const [draftSaving, setDraftSaving] = useState(false);
   const [generationFallback, setGenerationFallback] = useState<GenerationFallback | null>(null);
+  const [editingOutput, setEditingOutput] = useState(false);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [upgradeRequired, setUpgradeRequired] = useState<PlanTier>("creator");
   const abortRef = useRef<AbortController | null>(null);
@@ -992,6 +993,16 @@ const ToolPage = () => {
               <h3 className="font-display text-sm font-semibold text-foreground">{output ? "Output" : tool.id === "resume-builder" ? "Live Template Preview" : "Output"}</h3>
               {output && !loading && (
                 <div className="flex gap-2">
+                  {isResumeBuilder && (
+                    <Button
+                      variant={editingOutput ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setEditingOutput((v) => !v)}
+                    >
+                      {editingOutput ? <Eye className="h-3.5 w-3.5" /> : <Pencil className="h-3.5 w-3.5" />}
+                      {editingOutput ? "Done editing" : "Edit"}
+                    </Button>
+                  )}
                   <Button variant="outline" size="sm" onClick={handleCopy}>
                     {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
                     {copied ? "Copied" : "Copy"}
@@ -1005,6 +1016,31 @@ const ToolPage = () => {
               )}
             </div>
             {output ? (
+              editingOutput && isResumeBuilder ? ( // edit mode
+                <div className="grid gap-4 lg:grid-cols-2">
+                  <div>
+                    <p className="mb-2 text-xs text-muted-foreground">
+                      Edit your resume below — the preview updates live. Use <code className="rounded bg-secondary px-1">#</code> for your name, <code className="rounded bg-secondary px-1">##</code> for sections, <code className="rounded bg-secondary px-1">###</code> for job titles, and <code className="rounded bg-secondary px-1">-</code> for bullets.
+                    </p>
+                    <textarea
+                      value={output}
+                      onChange={(e) => setOutput(e.target.value)}
+                      className="min-h-[480px] w-full resize-y rounded-lg border border-border bg-background p-4 font-mono text-[13px] leading-relaxed text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      spellCheck={false}
+                    />
+                  </div>
+                  <div ref={previewRef}>
+                    <ProductPreview
+                      toolId={tool.id}
+                      category={tool.category}
+                      toolName={tool.name}
+                      output={output}
+                      inputs={inputValues}
+                      templateId={selectedTemplate}
+                    />
+                  </div>
+                </div>
+              ) : (
               <div ref={previewRef}>
                 <ProductPreview
                   toolId={tool.id}
@@ -1015,7 +1051,8 @@ const ToolPage = () => {
                   templateId={selectedTemplate}
                 />
               </div>
-            ) : tool.id === "resume-builder" ? (
+              ))
+            : tool.id === "resume-builder" ? (
               <div ref={previewRef}>
                 <ProductPreview
                   toolId={tool.id}
