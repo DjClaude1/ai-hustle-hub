@@ -1016,6 +1016,31 @@ const ToolPage = () => {
               )}
             </div>
             {output ? (
+              editingOutput && isResumeBuilder ? (
+                <div className="grid gap-4 lg:grid-cols-2">
+                  <div>
+                    <p className="mb-2 text-xs text-muted-foreground">
+                      Edit your resume below — the preview updates live. Use <code className="rounded bg-secondary px-1">#</code> for your name, <code className="rounded bg-secondary px-1">##</code> for sections, <code className="rounded bg-secondary px-1">###</code> for job titles, and <code className="rounded bg-secondary px-1">-</code> for bullets.
+                    </p>
+                    <textarea
+                      value={output}
+                      onChange={(e) => setOutput(e.target.value)}
+                      className="min-h-[480px] w-full resize-y rounded-lg border border-border bg-background p-4 font-mono text-[13px] leading-relaxed text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      spellCheck={false}
+                    />
+                  </div>
+                  <div ref={previewRef}>
+                    <ProductPreview
+                      toolId={tool.id}
+                      category={tool.category}
+                      toolName={tool.name}
+                      output={output}
+                      inputs={inputValues}
+                      templateId={selectedTemplate}
+                    />
+                  </div>
+                </div>
+              ) : (
               <div ref={previewRef}>
                 <ProductPreview
                   toolId={tool.id}
