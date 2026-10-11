@@ -993,6 +993,16 @@ const ToolPage = () => {
               <h3 className="font-display text-sm font-semibold text-foreground">{output ? "Output" : tool.id === "resume-builder" ? "Live Template Preview" : "Output"}</h3>
               {output && !loading && (
                 <div className="flex gap-2">
+                  {isResumeBuilder && (
+                    <Button
+                      variant={editingOutput ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setEditingOutput((v) => !v)}
+                    >
+                      {editingOutput ? <Eye className="h-3.5 w-3.5" /> : <Pencil className="h-3.5 w-3.5" />}
+                      {editingOutput ? "Done editing" : "Edit"}
+                    </Button>
+                  )}
                   <Button variant="outline" size="sm" onClick={handleCopy}>
                     {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
                     {copied ? "Copied" : "Copy"}
