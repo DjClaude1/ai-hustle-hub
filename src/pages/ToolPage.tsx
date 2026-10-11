@@ -1051,6 +1051,7 @@ const ToolPage = () => {
                   templateId={selectedTemplate}
                 />
               </div>
+              )
             ) : tool.id === "resume-builder" ? (
               <div ref={previewRef}>
                 <ProductPreview
