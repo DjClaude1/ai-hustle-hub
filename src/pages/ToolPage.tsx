@@ -1052,7 +1052,7 @@ const ToolPage = () => {
                 />
               </div>
               ))
-            ) : tool.id === "resume-builder" ? (
+            : tool.id === "resume-builder" ? (
               <div ref={previewRef}>
                 <ProductPreview
                   toolId={tool.id}
