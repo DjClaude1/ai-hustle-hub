@@ -1051,8 +1051,8 @@ const ToolPage = () => {
                   templateId={selectedTemplate}
                 />
               </div>
-              )
-            ) : tool.id === "resume-builder" ? ( // eslint-disable-line
+              ))
+            ) : tool.id === "resume-builder" ? (
               <div ref={previewRef}>
                 <ProductPreview
                   toolId={tool.id}
