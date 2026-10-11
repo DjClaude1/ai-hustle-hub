@@ -1016,7 +1016,7 @@ const ToolPage = () => {
               )}
             </div>
             {output ? (
-              editingOutput && isResumeBuilder ? (
+              editingOutput && isResumeBuilder ? ( // edit mode
                 <div className="grid gap-4 lg:grid-cols-2">
                   <div>
                     <p className="mb-2 text-xs text-muted-foreground">
