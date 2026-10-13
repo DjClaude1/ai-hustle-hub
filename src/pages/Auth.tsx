@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable/index";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -67,7 +66,6 @@ const Auth = () => {
           toast.error(error.message);
           return;
         }
-        // Auto-confirm is enabled, so session should exist immediately
         if (data.session) {
           toast.success("Account created! Welcome.");
           navigate(nextPath);
@@ -86,25 +84,30 @@ const Auth = () => {
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
     try {
-      const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: window.location.origin,
+      const redirectTo = `${window.location.origin}${nextPath}`;
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo,
+          queryParams: {
+            access_type: "offline",
+            prompt: "select_account",
+          },
+        },
       });
 
-      if (result.error) {
-        toast.error(result.error instanceof Error ? result.error.message : "Google sign-in failed");
+      if (error) {
+        toast.error(error.message || "Google sign-in failed");
         setGoogleLoading(false);
         return;
       }
 
-      if (result.redirected) {
-        return;
+      if (!data.url) {
+        toast.error("Google sign-in could not start. Please try again.");
+        setGoogleLoading(false);
       }
-
-      toast.success("Welcome!");
-      navigate(nextPath);
     } catch (err: any) {
       toast.error(err.message || "Google sign-in failed");
-    } finally {
       setGoogleLoading(false);
     }
   };
@@ -125,7 +128,6 @@ const Auth = () => {
         </div>
 
         <div className="space-y-4 rounded-xl border border-border bg-card p-6 shadow-card">
-          {/* Google Auth */}
           <Button
             variant="outline"
             size="lg"
