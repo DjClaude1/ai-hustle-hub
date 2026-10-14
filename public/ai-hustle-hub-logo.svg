@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+  <title id="title">AI Hustle Hub</title>
+  <desc id="desc">AI Hustle Hub professional AI monogram</desc>
+  <defs>
+    <linearGradient id="g" x1="8" y1="8" x2="56" y2="56" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#38BDF8"/>
+      <stop offset="0.5" stop-color="#6366F1"/>
+      <stop offset="1" stop-color="#A855F7"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="16" fill="#0B1020"/>
+  <path d="M18 45 28 19h8l10 26h-7l-2.2-6H27.2L25 45h-7Zm11.5-12h5L32 25.7 29.5 33Z" fill="url(#g)"/>
+  <path d="M20 49h24" stroke="url(#g)" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="49" cy="17" r="4" fill="#38BDF8"/>
+</svg>
