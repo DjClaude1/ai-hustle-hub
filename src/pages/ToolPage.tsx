@@ -20,6 +20,7 @@ import { UpgradeModal } from "@/components/UpgradeModal";
 import { DownloadMenu } from "@/components/DownloadMenu";
 import { getRequiredPlan, type PlanTier } from "@/lib/plans";
 import { buildManualGenerationBrief, extractBasicCvData, isAiCreditsError } from "@/lib/aiFallbacks";
+import { JobAutoApply } from "@/components/JobAutoApply";
 
 // Lazy-load pdfjs only when needed
 const extractPdfText = async (file: File): Promise<string> => {
@@ -1075,6 +1076,18 @@ const ToolPage = () => {
               </div>
             )}
           </div>
+        )}
+
+        {tool.id === "resume-builder" && user && (
+          <JobAutoApply
+            cvText={output || buildUserInput()}
+            role={inputValues.role || ""}
+            location={inputValues.location || ""}
+            skills={inputValues.skills || ""}
+            fullName={inputValues.fullName || ""}
+            hasAccess={isPro || isAdmin || trialActive}
+            onUpgrade={() => { setUpgradeRequired("pro"); setUpgradeOpen(true); }}
+          />
         )}
 
         {generationFallback && !loading && (
