@@ -68,6 +68,63 @@ export type Database = {
         }
         Relationships: []
       }
+      job_applications: {
+        Row: {
+          applied_at: string | null
+          company: string | null
+          contact_email: string | null
+          cover_letter: string | null
+          created_at: string
+          description: string | null
+          external_id: string | null
+          id: string
+          location: string | null
+          match_score: number | null
+          salary: string | null
+          status: string
+          title: string
+          updated_at: string
+          url: string | null
+          user_id: string
+        }
+        Insert: {
+          applied_at?: string | null
+          company?: string | null
+          contact_email?: string | null
+          cover_letter?: string | null
+          created_at?: string
+          description?: string | null
+          external_id?: string | null
+          id?: string
+          location?: string | null
+          match_score?: number | null
+          salary?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+          url?: string | null
+          user_id: string
+        }
+        Update: {
+          applied_at?: string | null
+          company?: string | null
+          contact_email?: string | null
+          cover_letter?: string | null
+          created_at?: string
+          description?: string | null
+          external_id?: string | null
+          id?: string
+          location?: string | null
+          match_score?: number | null
+          salary?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+          url?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       payments: {
         Row: {
           amount: number
