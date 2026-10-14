@@ -21,14 +21,28 @@ const Auth = () => {
     ? `/dashboard?upgrade=${requestedPlan}`
     : "/dashboard";
 
-  // OAuth returns to /auth so the app can complete navigation client-side.
-  // This avoids requiring /dashboard to be separately allow-listed in Supabase.
+  // Handle both existing sessions and the session created when OAuth returns to /auth.
+  // The auth-state listener avoids racing the OAuth code/hash exchange during page startup.
   useEffect(() => {
-    if (supabase.auth.getUser) {
-      supabase.auth.getUser().then(({ data }) => {
-        if (data.user) navigate(nextPath, { replace: true });
-      });
-    }
+    let active = true;
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (active && session?.user) {
+        navigate(nextPath, { replace: true });
+      }
+    });
+
+    supabase.auth.getSession().then(({ data, error }) => {
+      if (active && !error && data.session?.user) {
+        navigate(nextPath, { replace: true });
+      }
+    });
+
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
   }, [navigate, nextPath]);
 
   const handleSubmit = async (e: React.FormEvent) => {
