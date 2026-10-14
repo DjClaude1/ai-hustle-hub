@@ -415,7 +415,7 @@ export const tools: Tool[] = [
     description: "Create ATS-optimized resumes tailored to specific roles and industries",
     category: "Freelancing",
     icon: User,
-    prompt: "Build a professional, ATS-optimized resume with a compelling summary, quantified achievements, skills section optimized for the target role, and formatting recommendations. Use action verbs and metrics throughout. If personal details are provided (name, email, phone, location, LinkedIn, portfolio), include them in a professional header section.",
+    prompt: "Build a professional, ATS-optimized resume with a compelling summary, quantified achievements, skills section optimized for the target role, and formatting recommendations. Use action verbs and metrics throughout. If personal details are provided (name, email, phone, location, LinkedIn, portfolio), include them in a professional header section. If Specific Role / Job Ad Details are provided, tailor the ENTIRE CV to that exact role: mirror its keywords for ATS, rewrite the summary for that role, reorder and expand bullets most relevant to its requirements, prioritise matching skills, and add a Core Competencies section aligned to the job.",
     inputs: [
       { key: "role", label: "Target Role", placeholder: "e.g., Senior Frontend Developer", type: "text", required: true },
       { key: "roleDetails", label: "Specific Role / Job Ad Details (for a tailored CV)", placeholder: "Paste the job advert or describe the exact role (company, seniority, key requirements, tools). The CV will be rewritten to match it — keywords, summary, bullet order and skills.", type: "textarea" },
