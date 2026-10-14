@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,16 @@ const Auth = () => {
   const nextPath = requestedPlan && ["creator", "pro"].includes(requestedPlan)
     ? `/dashboard?upgrade=${requestedPlan}`
     : "/dashboard";
+
+  // OAuth returns to /auth so the app can complete navigation client-side.
+  // This avoids requiring /dashboard to be separately allow-listed in Supabase.
+  useEffect(() => {
+    if (supabase.auth.getUser) {
+      supabase.auth.getUser().then(({ data }) => {
+        if (data.user) navigate(nextPath, { replace: true });
+      });
+    }
+  }, [navigate, nextPath]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,7 +94,7 @@ const Auth = () => {
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
     try {
-      const redirectTo = `${window.location.origin}${nextPath}`;
+      const redirectTo = `${window.location.origin}/auth`;
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
