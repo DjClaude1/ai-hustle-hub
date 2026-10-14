@@ -418,6 +418,7 @@ export const tools: Tool[] = [
     prompt: "Build a professional, ATS-optimized resume with a compelling summary, quantified achievements, skills section optimized for the target role, and formatting recommendations. Use action verbs and metrics throughout. If personal details are provided (name, email, phone, location, LinkedIn, portfolio), include them in a professional header section.",
     inputs: [
       { key: "role", label: "Target Role", placeholder: "e.g., Senior Frontend Developer", type: "text", required: true },
+      { key: "roleDetails", label: "Specific Role / Job Ad Details (for a tailored CV)", placeholder: "Paste the job advert or describe the exact role (company, seniority, key requirements, tools). The CV will be rewritten to match it — keywords, summary, bullet order and skills.", type: "textarea" },
       { key: "experience", label: "Work Experience Summary", placeholder: "List your relevant positions, companies, and key achievements...", type: "textarea", required: true },
       { key: "skills", label: "Key Skills", placeholder: "e.g., React, TypeScript, Node.js, Team Leadership, Agile", type: "text", required: true },
       { key: "education", label: "Education", placeholder: "e.g., B.S. Computer Science, University of California, 2018", type: "text" },
