@@ -51,15 +51,6 @@ const Landing = () => {
               </Button>
             </Link>
           </div>
-
-          <div
-            className="mt-8 flex items-center justify-center gap-6 text-sm text-muted-foreground opacity-0 animate-fade-up"
-            style={{ animationDelay: "320ms" }}
-          >
-            <span className="flex items-center gap-1.5"><Check className="h-4 w-4 text-primary" /> No credit card</span>
-            <span className="flex items-center gap-1.5"><Check className="h-4 w-4 text-primary" /> 5 free daily generations</span>
-            <span className="flex items-center gap-1.5"><Check className="h-4 w-4 text-primary" /> Full content, not outlines</span>
-          </div>
         </div>
       </section>
 
