@@ -239,7 +239,7 @@ export const JobAutoApply = ({ cvText, role, location, skills, fullName, hasAcce
                 : "This employer accepts applications on their site. Approving copies your letter and opens the application page."}
             </p>
             <div className="mt-4 flex flex-wrap justify-end gap-2">
-              <DownloadMenu content={review.cover_letter || ""} filename={`cover-letter-${review.company || "job"}`} title={`Cover letter – ${review.title}`} />
+              <DownloadMenu content={review.cover_letter || ""} filename={`cover-letter-${review.company || "job"}`} />
               <Button variant="outline" onClick={() => setReview(null)}>Cancel</Button>
               <Button onClick={() => approve(review)} disabled={!review.contact_email && !review.url}>
                 <Send className="h-4 w-4" /> Approve & apply
