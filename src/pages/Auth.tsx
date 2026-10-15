@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -23,7 +22,6 @@ const Auth = () => {
     : "/dashboard";
 
   // Handle both existing sessions and the session created when OAuth returns to /auth.
-  // The auth-state listener avoids racing the OAuth code/hash exchange during page startup.
   useEffect(() => {
     let active = true;
     const {
@@ -79,7 +77,7 @@ const Auth = () => {
           password,
           options: {
             data: { full_name: fullName },
-            emailRedirectTo: window.location.origin,
+            emailRedirectTo: `${window.location.origin}/auth`,
           },
         });
         if (error) {
@@ -109,15 +107,22 @@ const Auth = () => {
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
     try {
-      const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: `${window.location.origin}/auth`,
+      // Use Supabase directly. The previous implementation used the Lovable
+      // OAuth wrapper and passed `redirect_uri`, which is not the Supabase
+      // client option and could send production logins to the wrong callback.
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/auth`,
+        },
       });
 
-      if (result.error) {
-        toast.error(result.error.message || "Google sign-in failed");
+      if (error) {
+        toast.error(error.message || "Google sign-in failed");
         setGoogleLoading(false);
-        return;
       }
+      // On success Supabase redirects the browser to Google, so there is
+      // intentionally no local navigate() call here.
     } catch (err: any) {
       toast.error(err.message || "Google sign-in failed");
       setGoogleLoading(false);
