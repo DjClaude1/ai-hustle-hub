@@ -66,14 +66,40 @@ export const JobAutoApply = ({ cvText, role, location, skills, fullName, hasAcce
   }, [user]);
   useEffect(() => { loadTracked(); }, [loadTracked]);
 
-  const search = async () => {
-    if (!q.trim()) return toast.error("Enter a role to search for");
+  const search = async (override?: { where?: string; country?: string }) => {
+    const query = q.trim() || role.trim();
+    if (!query) return toast.error("Enter a role to search for (or generate your CV first)");
+    if (!q.trim()) setQ(query);
     setSearching(true);
-    const { data, error } = await supabase.functions.invoke("job-search", { body: { role: q, location: where, country, skills } });
+    const cvSkills = [skills, cvText.slice(0, 2500)].filter(Boolean).join("\n");
+    const { data, error } = await supabase.functions.invoke("job-search", {
+      body: { role: query, location: override?.where ?? where, country: override?.country ?? country, skills: cvSkills },
+    });
     setSearching(false);
     if (error) return toast.error(await errMsg(error));
     setResults(data.jobs || []);
     if (!data.jobs?.length) toast.info("No jobs found — try a broader role or location");
+  };
+
+  const [locating, setLocating] = useState(false);
+  const searchNearMe = () => {
+    if (!navigator.geolocation) return toast.error("Your device doesn't support location");
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(async ({ coords }) => {
+      try {
+        const r = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${coords.latitude}&longitude=${coords.longitude}&localityLanguage=en`);
+        const g = await r.json();
+        const city = g.city || g.locality || g.principalSubdivision || "";
+        const cc = String(g.countryCode || "").toLowerCase();
+        const validCc = COUNTRIES.some(([c]) => c === cc) ? cc : country;
+        setWhere(city); setCountry(validCc);
+        toast.success(`Searching jobs near ${city || "you"} that match your CV`);
+        await search({ where: city, country: validCc });
+      } catch {
+        toast.error("Couldn't work out your city — type it in instead");
+      } finally { setLocating(false); }
+    }, () => { setLocating(false); toast.error("Location permission denied — type your city instead"); },
+    { enableHighAccuracy: false, timeout: 10000, maximumAge: 600000 });
   };
 
   const prepare = async (job: Job) => {
@@ -146,14 +172,17 @@ export const JobAutoApply = ({ cvText, role, location, skills, fullName, hasAcce
         </div>
       ) : tab === "search" ? (
         <>
-          <div className="mt-4 grid gap-2 sm:grid-cols-[1fr_1fr_160px_auto]">
+          <div className="mt-4 grid gap-2 sm:grid-cols-[1fr_1fr_160px_auto_auto]">
             <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Role, e.g. Data Analyst" />
             <Input value={where} onChange={(e) => setWhere(e.target.value)} placeholder="City or area" />
             <select value={country} onChange={(e) => setCountry(e.target.value)}
               className="h-10 rounded-md border border-input bg-background px-3 text-sm text-foreground">
               {COUNTRIES.map(([c, n]) => <option key={c} value={c}>{n}</option>)}
             </select>
-            <Button onClick={search} disabled={searching}>
+            <Button variant="outline" onClick={searchNearMe} disabled={locating || searching}>
+              {locating ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />} Near me
+            </Button>
+            <Button onClick={() => search()} disabled={searching}>
               {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />} Search
             </Button>
           </div>
