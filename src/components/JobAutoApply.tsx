@@ -111,7 +111,7 @@ export const JobAutoApply = ({ cvText, role, location, skills, fullName, hasAcce
     setBusy(null);
     if (error) return toast.error(await errMsg(error));
     const row = { ...job, user_id: user!.id, cover_letter: data.coverLetter, status: "ready", updated_at: new Date().toISOString() };
-    delete (row as any).created;
+    delete (row as any).created; delete (row as any).matched_skills; delete (row as any).nearby; delete (row as any).source; delete (row as any).remote;
     delete (row as any).id;
     const { data: saved, error: dbErr } = await supabase.from("job_applications")
       .upsert(row, { onConflict: "user_id,external_id" }).select().single();
