@@ -21,6 +21,8 @@ interface Job {
   salary: string | null;
   contact_email: string | null;
   match_score: number | null;
+  matched_skills?: string[];
+  nearby?: boolean;
   status?: string;
   cover_letter?: string | null;
 }
