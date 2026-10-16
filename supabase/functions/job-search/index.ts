@@ -139,7 +139,7 @@ Deno.serve(async (req) => {
       jobs = local.concat(rest.filter((j) => j.remote), rest.filter((j) => !j.remote));
     }
     if (jobs.length === 0) {
-      return json({ error: "No jobs found for that role right now. Try a broader title (e.g. \"developer\" instead of \"senior react developer\")." }, 404);
+      return json({ jobs: [], total: 0, message: "No jobs found for that role right now. Try a broader title." });
     }
 
     const skillList = String(skills).toLowerCase().split(/[,;\n]/).map((s) => s.trim()).filter((s) => s.length > 1).slice(0, 40);
@@ -180,7 +180,7 @@ Deno.serve(async (req) => {
       .slice(0, 40);
 
     if (scored.length === 0) {
-      return json({ error: "No close matches found. Try a broader role title or fewer filters." }, 404);
+      return json({ jobs: [], total: 0, message: "No close matches found. Try a broader role title or fewer filters." });
     }
 
     const sources = [...new Set(scored.map((j) => j.source))];

@@ -80,7 +80,7 @@ export const JobAutoApply = ({ cvText, role, location, skills, fullName, hasAcce
     setSearching(false);
     if (error) return toast.error(await errMsg(error));
     setResults(data.jobs || []);
-    if (!data.jobs?.length) toast.info("No jobs found — try a broader role or location");
+    if (!data.jobs?.length) toast.info(data.message || "No jobs found — try a broader role or location");
   };
 
   const [locating, setLocating] = useState(false);
