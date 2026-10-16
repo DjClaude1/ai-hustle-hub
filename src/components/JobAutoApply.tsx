@@ -209,9 +209,19 @@ export const JobAutoApply = ({ cvText, role, location, skills, fullName, hasAcce
                         {job.salary && <span>{job.salary}</span>}
                       </p>
                     </div>
-                    <Badge variant={(job.match_score ?? 0) >= 60 ? "default" : "secondary"}>{job.match_score}% match</Badge>
+                    <div className="flex shrink-0 flex-col items-end gap-1">
+                      <Badge variant={(job.match_score ?? 0) >= 60 ? "default" : "secondary"}>{job.match_score}% match</Badge>
+                      {job.nearby && <Badge variant="outline" className="text-xs"><MapPin className="mr-1 h-3 w-3" /> Near you</Badge>}
+                    </div>
                   </div>
                   <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{job.description}</p>
+                  {job.matched_skills && job.matched_skills.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {job.matched_skills.map((s) => (
+                        <span key={s} className="rounded-full bg-secondary px-2 py-0.5 text-xs text-secondary-foreground">{s}</span>
+                      ))}
+                    </div>
+                  )}
                   <div className="mt-3 flex flex-wrap gap-2">
                     {t?.status === "applied" ? (
                       <Badge><Check className="mr-1 h-3 w-3" /> Applied</Badge>
