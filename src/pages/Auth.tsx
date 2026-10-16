@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { lovable } from "@/integrations/lovable/index";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -107,22 +108,18 @@ const Auth = () => {
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
     try {
-      // Use Supabase directly. The previous implementation used the Lovable
-      // OAuth wrapper and passed `redirect_uri`, which is not the Supabase
-      // client option and could send production logins to the wrong callback.
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: `${window.location.origin}/auth`,
-        },
+      const result = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: window.location.origin,
       });
 
-      if (error) {
-        toast.error(error.message || "Google sign-in failed");
+      if (result.error) {
+        toast.error(result.error.message || "Google sign-in failed");
         setGoogleLoading(false);
+        return;
       }
-      // On success Supabase redirects the browser to Google, so there is
-      // intentionally no local navigate() call here.
+      // On redirect the browser leaves for Google; if tokens were set
+      // directly, the auth listener picks up the session.
+      if (!result.redirected) setGoogleLoading(false);
     } catch (err: any) {
       toast.error(err.message || "Google sign-in failed");
       setGoogleLoading(false);
