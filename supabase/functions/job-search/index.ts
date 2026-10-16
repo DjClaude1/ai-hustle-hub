@@ -128,10 +128,15 @@ Deno.serve(async (req) => {
     ]);
     let jobs: RawJob[] = results.flatMap((r) => (r.status === "fulfilled" ? r.value : []));
     if (remoteOnly) jobs = jobs.filter((j) => j.remote);
-    if (location) {
-      const loc = String(location).toLowerCase();
-      const local = jobs.filter((j) => j.location?.toLowerCase().includes(loc));
-      if (local.length >= 3) jobs = local.concat(jobs.filter((j) => !local.includes(j) && j.remote));
+
+    // Near-me prioritisation: always float jobs in the requested city/area to
+    // the top, even when there are only one or two of them.
+    const loc = String(location).toLowerCase().trim();
+    const isLocal = (j: RawJob) => !!loc && !!j.location && j.location.toLowerCase().includes(loc);
+    if (loc) {
+      const local = jobs.filter(isLocal);
+      const rest = jobs.filter((j) => !isLocal(j));
+      jobs = local.concat(rest.filter((j) => j.remote), rest.filter((j) => !j.remote));
     }
     if (jobs.length === 0) {
       return json({ error: "No jobs found for that role right now. Try a broader title (e.g. \"developer\" instead of \"senior react developer\")." }, 404);
@@ -141,12 +146,17 @@ Deno.serve(async (req) => {
     const roleWords = role.toLowerCase().split(/\s+/).filter((w: string) => w.length > 2);
 
     const scored = jobs.map((j) => {
+      // Parse the job description: which of the candidate's skills does this
+      // job actually ask for, and which role words appear in the title?
       const text = `${j.title} ${j.description}`.toLowerCase();
-      const skillHits = skillList.filter((s) => text.includes(s)).length;
+      const matchedSkills = skillList.filter((s) => text.includes(s));
+      const skillHits = matchedSkills.length;
       const roleHits = roleWords.filter((w: string) => j.title.toLowerCase().includes(w)).length;
+      const localBoost = isLocal(j) ? 10 : 0;
       const score = Math.min(100, Math.round(
-        (roleWords.length ? (roleHits / roleWords.length) * 60 : 30) +
-        (skillList.length ? (skillHits / Math.min(skillList.length, 8)) * 40 : 20),
+        (roleWords.length ? (roleHits / roleWords.length) * 55 : 25) +
+        (skillList.length ? (skillHits / Math.min(skillList.length, 8)) * 35 : 15) +
+        localBoost,
       ));
       return {
         external_id: j.external_id,
@@ -158,6 +168,8 @@ Deno.serve(async (req) => {
         salary: j.salary,
         contact_email: (j.description.match(EMAIL_RE) || [])[0] ?? null,
         match_score: score,
+        matched_skills: matchedSkills.slice(0, 8),
+        nearby: isLocal(j),
         created: j.created,
         source: j.source,
         remote: j.remote,
