@@ -113,7 +113,7 @@ export const BusinessExecute = ({ plan, hasAccess, onUpgrade }: Props) => {
             <div className="mt-3">
               <div className="mb-2"><DownloadMenu content={product} filename="digital-product" /></div>
               <div className="max-h-[700px] overflow-auto rounded-lg border border-border">
-                <ProductPreview toolId="ebook-writer" content={product} />
+                <ProductPreview toolId="ebook-generator" category="Digital Products" toolName="Digital Product" output={product} inputs={{}} />
               </div>
             </div>
           )}
