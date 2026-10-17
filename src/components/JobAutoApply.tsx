@@ -68,6 +68,15 @@ export const JobAutoApply = ({ cvText, role, location, skills, fullName, hasAcce
   }, [user]);
   useEffect(() => { loadTracked(); }, [loadTracked]);
 
+  // Auto-search all job sources as soon as a CV is available.
+  const [autoKey, setAutoKey] = useState("");
+  useEffect(() => {
+    const key = `${role}|${cvText.length > 200 ? cvText.slice(0, 200) : ""}`;
+    if (!hasAccess || !user || !role.trim() || cvText.length < 200 || key === autoKey || searching) return;
+    const t = setTimeout(() => { setAutoKey(key); search(); }, 1200);
+    return () => clearTimeout(t);
+  }, [role, cvText, hasAccess, user]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const search = async (override?: { where?: string; country?: string }) => {
     const query = q.trim() || role.trim();
     if (!query) return toast.error("Enter a role to search for (or generate your CV first)");
