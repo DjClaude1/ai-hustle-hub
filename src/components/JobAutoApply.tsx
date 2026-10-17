@@ -188,6 +188,32 @@ export const JobAutoApply = ({ cvText, role, location, skills, fullName, hasAcce
               {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />} Search
             </Button>
           </div>
+          {(() => {
+            const role = (q || "jobs").trim();
+            const place = where.trim();
+            const rq = encodeURIComponent(role);
+            const both = encodeURIComponent(`${role} jobs${place ? ` in ${place}` : ""}`);
+            const pq = encodeURIComponent(place);
+            const links: [string, string][] = [
+              ["Google Jobs", `https://www.google.com/search?q=${both}&ibp=htl;jobs`],
+              ["Facebook Jobs", `https://www.facebook.com/search/posts?q=${both}`],
+              ["Gumtree", `https://www.gumtree.co.za/s-jobs/v1c8p1?q=${rq}${place ? `&location=${pq}` : ""}`],
+              ["LinkedIn", `https://www.linkedin.com/jobs/search/?keywords=${rq}&location=${pq}`],
+              ["Indeed", `https://${country === "za" ? "za." : ""}indeed.com/jobs?q=${rq}&l=${pq}`],
+              ["PNet", `https://www.pnet.co.za/jobs/${rq}`],
+              ["Careers24", `https://www.careers24.com/jobs/kw-${rq}/`],
+              ["Glassdoor", `https://www.glassdoor.com/Job/jobs.htm?sc.keyword=${rq}`],
+            ];
+            return (
+              <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+                <span className="text-muted-foreground">Also search on:</span>
+                {links.map(([n, u]) => (
+                  <a key={n} href={u} target="_blank" rel="noopener noreferrer"
+                    className="rounded-full border border-border px-2.5 py-1 text-foreground hover:bg-muted">{n}</a>
+                ))}
+              </div>
+            );
+          })()}
           {results.length > 0 && (
             <div className="mt-3 flex items-center gap-3 text-sm text-muted-foreground">
               <span>Minimum match: {minScore}%</span>

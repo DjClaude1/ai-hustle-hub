@@ -106,6 +106,70 @@ async function fromArbeitnow(role: string): Promise<RawJob[]> {
     }));
 }
 
+async function fromHimalayas(role: string): Promise<RawJob[]> {
+  const resp = await fetch(`https://himalayas.app/jobs/api/search?q=${encodeURIComponent(role.slice(0, 60))}`);
+  if (!resp.ok) { console.error("Himalayas", resp.status); return []; }
+  const data = await resp.json();
+  return (data.jobs || []).slice(0, 40).map((r: any): RawJob => ({
+    external_id: `himalayas-${r.guid ?? r.applicationLink}`,
+    title: strip(r.title) || "Untitled",
+    company: r.companyName ?? null,
+    location: (r.locationRestrictions || []).join(", ") || "Remote",
+    url: r.applicationLink,
+    description: strip(r.description ?? r.excerpt).slice(0, 2000),
+    salary: r.minSalary ? `$${Number(r.minSalary).toLocaleString()}${r.maxSalary ? ` – $${Number(r.maxSalary).toLocaleString()}` : ""}` : null,
+    created: r.pubDate ? new Date(r.pubDate * 1000).toISOString() : null,
+    remote: true,
+    source: "Himalayas",
+  }));
+}
+
+async function fromRemoteOK(role: string): Promise<RawJob[]> {
+  const resp = await fetch("https://remoteok.com/api", { headers: { "User-Agent": "AIHustleStudio/1.0" } });
+  if (!resp.ok) { console.error("RemoteOK", resp.status); return []; }
+  const data = await resp.json();
+  const words = role.toLowerCase().split(/\s+/).filter((w) => w.length > 2);
+  return (Array.isArray(data) ? data.slice(1) : [])
+    .filter((r: any) => words.some((w) => `${r.position} ${(r.tags || []).join(" ")}`.toLowerCase().includes(w)))
+    .slice(0, 40)
+    .map((r: any): RawJob => ({
+      external_id: `remoteok-${r.id}`,
+      title: strip(r.position) || "Untitled",
+      company: r.company ?? null,
+      location: r.location || "Remote",
+      url: r.url,
+      description: strip(r.description).slice(0, 2000),
+      salary: r.salary_min ? `$${Number(r.salary_min).toLocaleString()}${r.salary_max ? ` – $${Number(r.salary_max).toLocaleString()}` : ""}` : null,
+      created: r.date ?? null,
+      remote: true,
+      source: "RemoteOK",
+    }));
+}
+
+async function fromTheMuse(role: string): Promise<RawJob[]> {
+  const resp = await fetch(`https://www.themuse.com/api/public/jobs?page=0&descending=true`);
+  if (!resp.ok) { console.error("TheMuse", resp.status); return []; }
+  const data = await resp.json();
+  const words = role.toLowerCase().split(/\s+/).filter((w) => w.length > 2);
+  return (data.results || [])
+    .filter((r: any) => words.some((w) => String(r.name).toLowerCase().includes(w)))
+    .map((r: any): RawJob => {
+      const locs = (r.locations || []).map((l: any) => l.name).join(", ");
+      return {
+        external_id: `muse-${r.id}`,
+        title: strip(r.name) || "Untitled",
+        company: r.company?.name ?? null,
+        location: locs || null,
+        url: r.refs?.landing_page,
+        description: strip(r.contents).slice(0, 2000),
+        salary: null,
+        created: r.publication_date ?? null,
+        remote: /remote|flexible/i.test(locs),
+        source: "The Muse",
+      };
+    });
+}
+
 // ---------- Handler ----------
 
 Deno.serve(async (req) => {
@@ -125,6 +189,9 @@ Deno.serve(async (req) => {
       fromJobicy(role, !!remoteOnly),
       fromRemotive(role),
       fromArbeitnow(role),
+      fromHimalayas(role),
+      fromRemoteOK(role),
+      fromTheMuse(role),
     ]);
     let jobs: RawJob[] = results.flatMap((r) => (r.status === "fulfilled" ? r.value : []));
     if (remoteOnly) jobs = jobs.filter((j) => j.remote);
