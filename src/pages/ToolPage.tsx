@@ -21,6 +21,7 @@ import { DownloadMenu } from "@/components/DownloadMenu";
 import { getRequiredPlan, type PlanTier } from "@/lib/plans";
 import { buildManualGenerationBrief, extractBasicCvData, isAiCreditsError } from "@/lib/aiFallbacks";
 import { JobAutoApply } from "@/components/JobAutoApply";
+import { BusinessExecute } from "@/components/BusinessExecute";
 
 // Lazy-load pdfjs only when needed
 const extractPdfText = async (file: File): Promise<string> => {
@@ -1076,6 +1077,14 @@ const ToolPage = () => {
               </div>
             )}
           </div>
+        )}
+
+        {tool.id === "business-in-a-box" && user && output && !loading && (
+          <BusinessExecute
+            plan={output}
+            hasAccess={isPro || isAdmin || trialActive}
+            onUpgrade={() => { setUpgradeRequired("pro"); setUpgradeOpen(true); }}
+          />
         )}
 
         {tool.id === "resume-builder" && user && (
