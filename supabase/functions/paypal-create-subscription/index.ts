@@ -5,10 +5,12 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// PayPal billing is kept in USD for broad payment compatibility.
+// The UI presents the SA-friendly reference prices: ~R99 Starter and ~R249 Pro.
 const PAYPAL_BASE = "https://api-m.paypal.com";
 const TIERS: Record<string, { name: string; amount: string }> = {
-  creator: { name: "AI Hustle Studio Creator", amount: "19.00" },
-  pro: { name: "AI Hustle Studio Pro", amount: "49.00" },
+  creator: { name: "AI Hustle Hub Starter", amount: "6.00" },
+  pro: { name: "AI Hustle Hub Pro", amount: "15.00" },
 };
 
 async function getAccessToken() {
@@ -30,19 +32,15 @@ async function ensurePlan(supabase: any, token: string, tier: "creator" | "pro")
   if (cached?.plan_id) return cached.plan_id as string;
   const cfg = TIERS[tier];
   const prodRes = await fetch(`${PAYPAL_BASE}/v1/catalogs/products`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     body: JSON.stringify({ name: cfg.name, type: "SERVICE", category: "SOFTWARE" }),
   });
   const product = await prodRes.json();
   if (!prodRes.ok) throw new Error("Unable to create the PayPal product.");
   const planRes = await fetch(`${PAYPAL_BASE}/v1/billing/plans`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", Prefer: "return=representation" },
+    method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", Prefer: "return=representation" },
     body: JSON.stringify({
-      product_id: product.id,
-      name: `${cfg.name} Monthly (7-Day Free Trial)`,
-      status: "ACTIVE",
+      product_id: product.id, name: `${cfg.name} Monthly (7-Day Free Trial)`, status: "ACTIVE",
       billing_cycles: [
         { frequency: { interval_unit: "DAY", interval_count: 7 }, tenure_type: "TRIAL", sequence: 1, total_cycles: 1, pricing_scheme: { fixed_price: { value: "0.00", currency_code: "USD" } } },
         { frequency: { interval_unit: "MONTH", interval_count: 1 }, tenure_type: "REGULAR", sequence: 2, total_cycles: 0, pricing_scheme: { fixed_price: { value: cfg.amount, currency_code: "USD" } } },
@@ -77,9 +75,8 @@ Deno.serve(async (req) => {
     const token = await getAccessToken();
     const planId = await ensurePlan(supabase, token, tier);
     const subRes = await fetch(`${PAYPAL_BASE}/v1/billing/subscriptions`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", Prefer: "return=representation" },
-      body: JSON.stringify({ plan_id: planId, custom_id: `${user.id}|${tier}`, subscriber: { email_address: user.email }, application_context: { brand_name: "AI Hustle Studio", user_action: "SUBSCRIBE_NOW", return_url: returnUrl, cancel_url: cancelUrl } }),
+      method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", Prefer: "return=representation" },
+      body: JSON.stringify({ plan_id: planId, custom_id: `${user.id}|${tier}`, subscriber: { email_address: user.email }, application_context: { brand_name: "AI Hustle Hub", user_action: "SUBSCRIBE_NOW", return_url: returnUrl, cancel_url: cancelUrl } }),
     });
     const sub = await subRes.json();
     if (!subRes.ok) throw new Error("Unable to create the PayPal subscription.");
