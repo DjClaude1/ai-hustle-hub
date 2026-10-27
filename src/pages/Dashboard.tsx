@@ -62,13 +62,12 @@ const Dashboard = () => {
     setModalRequired(required);
     setModalReason(
       required === "pro"
-        ? "Upgrade to PRO for unlimited AI generation and advanced business systems."
+        ? "Upgrade to PRO for advanced business systems and higher generation limits."
         : "Upgrade to unlock advanced AI business tools.",
     );
     setModalOpen(true);
   };
 
-  // Show welcome tour on first visit
   useEffect(() => {
     if (user && !hasSeenTour()) {
       const t = setTimeout(() => setTourOpen(true), 400);
@@ -76,7 +75,6 @@ const Dashboard = () => {
     }
   }, [user]);
 
-  // Load recent generations
   useEffect(() => {
     if (!user) return;
     (async () => {
@@ -172,10 +170,10 @@ const Dashboard = () => {
               {tier === "free" && !isAdmin && (
                 <>
                   <Button variant="hero" size="sm" onClick={() => { setModalRequired("creator"); setModalReason(undefined); setModalOpen(true); }} className="gap-1">
-                    <Sparkles className="h-3.5 w-3.5" /> Creator $19
+                    <Sparkles className="h-3.5 w-3.5" /> Starter R199
                   </Button>
                   <Button variant="accent" size="sm" onClick={() => { setModalRequired("pro"); setModalReason(undefined); setModalOpen(true); }} className="gap-1">
-                    <Crown className="h-3.5 w-3.5" /> Pro $49
+                    <Crown className="h-3.5 w-3.5" /> Pro R479
                   </Button>
                 </>
               )}
@@ -188,7 +186,6 @@ const Dashboard = () => {
           )}
         </div>
 
-        {/* Trial active banner */}
         {user && trialActive && (
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-accent/40 bg-gradient-to-r from-accent/10 via-primary/5 to-transparent p-4">
             <div className="flex items-center gap-3">
@@ -208,14 +205,13 @@ const Dashboard = () => {
           </div>
         )}
 
-        {/* Trial exhausted banner */}
         {user && !trialActive && trialLimit - trialRemaining >= trialLimit && tier === "free" && !isAdmin && !trialAvailable && (
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-4">
             <div className="flex items-center gap-3">
               <Lock className="h-4 w-4 text-destructive" />
               <div>
                 <div className="font-display text-sm font-semibold text-foreground">Free trial used up</div>
-                <div className="text-xs text-muted-foreground">Subscribe to keep unlimited premium access.</div>
+                <div className="text-xs text-muted-foreground">Subscribe to continue using premium workflows.</div>
               </div>
             </div>
             <Button variant="hero" size="sm" onClick={() => { setModalRequired("creator"); setModalReason(undefined); setModalOpen(true); }}>
@@ -224,7 +220,6 @@ const Dashboard = () => {
           </div>
         )}
 
-        {/* Free upgrade banner */}
         {user && tier === "free" && !isAdmin && !trialActive && (
           <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/30 bg-gradient-to-r from-primary/10 via-accent/5 to-transparent p-4">
             <div className="flex items-center gap-3">
@@ -238,7 +233,7 @@ const Dashboard = () => {
                 <div className="text-xs text-muted-foreground">
                   {trialAvailable
                     ? "Authorize PayPal, no charge for 7 days. Cancel anytime."
-                    : "5 generations/day · 7 free tools · 7-day history."}
+                    : "5 generations/day · 10 starter tools · 7-day history."}
                 </div>
               </div>
             </div>
@@ -248,7 +243,6 @@ const Dashboard = () => {
           </div>
         )}
 
-        {/* Recents */}
         {user && recentTools.length > 0 && (
           <div className="mb-6">
             <div className="mb-3 flex items-center gap-2">
@@ -257,19 +251,11 @@ const Dashboard = () => {
             </div>
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
               {recentTools.map((r) => (
-                <Link
-                  key={r.tool_id}
-                  to={`/tool/${r.tool_id}`}
-                  className="group flex items-center gap-3 rounded-lg border border-border bg-card p-3 transition-all hover:border-primary/50 hover:shadow-soft"
-                >
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/8 text-primary">
-                    {r.tool && <r.tool.icon className="h-4 w-4" />}
-                  </div>
+                <Link key={r.tool_id} to={`/tool/${r.tool_id}`} className="group flex items-center gap-3 rounded-lg border border-border bg-card p-3 transition-all hover:border-primary/50 hover:shadow-soft">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/8 text-primary">{r.tool && <r.tool.icon className="h-4 w-4" />}</div>
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-sm font-medium text-foreground">{r.tool_name}</div>
-                    <div className="truncate text-xs text-muted-foreground">
-                      {new Date(r.created_at).toLocaleDateString()}
-                    </div>
+                    <div className="truncate text-xs text-muted-foreground">{new Date(r.created_at).toLocaleDateString()}</div>
                   </div>
                   <ArrowRight className="h-3.5 w-3.5 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
                 </Link>
@@ -278,63 +264,19 @@ const Dashboard = () => {
           </div>
         )}
 
-        {/* Search */}
         <div className="mb-4 relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search tools…"
-            className="pl-9 max-w-md"
-          />
+          <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search tools…" className="pl-9 max-w-md" />
         </div>
 
         <div className="mb-6 flex flex-wrap gap-2">
-          <button
-            onClick={() => setActiveCategory("All")}
-            className={`rounded-lg px-3.5 py-2 text-sm font-medium transition-all duration-200 ${
-              activeCategory === "All"
-                ? "bg-primary text-primary-foreground shadow-soft"
-                : "bg-secondary text-muted-foreground hover:text-foreground hover:bg-secondary/80"
-            }`}
-          >
-            All ({tools.length})
-          </button>
-          {favorites.length > 0 && (
-            <button
-              onClick={() => setActiveCategory("Favorites")}
-              className={`flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-medium transition-all duration-200 ${
-                activeCategory === "Favorites"
-                  ? "bg-primary text-primary-foreground shadow-soft"
-                  : "bg-secondary text-muted-foreground hover:text-foreground hover:bg-secondary/80"
-              }`}
-            >
-              <Star className="h-3.5 w-3.5 fill-current" /> Favorites ({favorites.length})
-            </button>
-          )}
-          {categories.map((cat) => (
-            <button
-              key={cat.name}
-              onClick={() => setActiveCategory(cat.name)}
-              className={`rounded-lg px-3.5 py-2 text-sm font-medium transition-all duration-200 ${
-                activeCategory === cat.name
-                  ? "bg-primary text-primary-foreground shadow-soft"
-                  : "bg-secondary text-muted-foreground hover:text-foreground hover:bg-secondary/80"
-              }`}
-            >
-              {cat.emoji} {cat.name}
-            </button>
-          ))}
+          <button onClick={() => setActiveCategory("All")} className={`rounded-lg px-3.5 py-2 text-sm font-medium transition-all duration-200 ${activeCategory === "All" ? "bg-primary text-primary-foreground shadow-soft" : "bg-secondary text-muted-foreground hover:text-foreground hover:bg-secondary/80"}`}>All ({tools.length})</button>
+          {favorites.length > 0 && <button onClick={() => setActiveCategory("Favorites")} className={`flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-medium transition-all duration-200 ${activeCategory === "Favorites" ? "bg-primary text-primary-foreground shadow-soft" : "bg-secondary text-muted-foreground hover:text-foreground hover:bg-secondary/80"}`}><Star className="h-3.5 w-3.5 fill-current" /> Favorites ({favorites.length})</button>}
+          {categories.map((cat) => <button key={cat.name} onClick={() => setActiveCategory(cat.name)} className={`rounded-lg px-3.5 py-2 text-sm font-medium transition-all duration-200 ${activeCategory === cat.name ? "bg-primary text-primary-foreground shadow-soft" : "bg-secondary text-muted-foreground hover:text-foreground hover:bg-secondary/80"}`}>{cat.emoji} {cat.name}</button>)}
         </div>
 
         {filtered.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-border p-12 text-center">
-            <p className="text-sm text-muted-foreground">
-              {activeCategory === "Favorites"
-                ? "No favorites yet — tap the ⭐ on any tool to pin it here."
-                : "No tools match your search."}
-            </p>
-          </div>
+          <div className="rounded-xl border border-dashed border-border p-12 text-center"><p className="text-sm text-muted-foreground">{activeCategory === "Favorites" ? "No favorites yet — tap the ⭐ on any tool to pin it here." : "No tools match your search."}</p></div>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {filtered.map((tool, i) => {
@@ -342,91 +284,20 @@ const Dashboard = () => {
               const accessible = canAccessTool(tool.id);
               const locked = !accessible;
               const fav = isFavorite(tool.id);
-              const badgeText = required === "pro" ? "Pro" : required === "creator" ? "Creator" : null;
-              const badgeColor =
-                required === "pro" ? "bg-accent/10 text-accent" :
-                required === "creator" ? "bg-primary/10 text-primary" : "";
-
-              const card = (
-                <div
-                  className={`group relative flex flex-col rounded-xl border bg-card p-5 shadow-soft transition-all duration-300 hover:shadow-card hover:-translate-y-0.5 active:scale-[0.98] ${
-                    locked ? "border-border/50 opacity-75" : "border-border"
-                  }`}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className={`flex h-10 w-10 items-center justify-center rounded-lg transition-colors ${
-                      locked ? "bg-muted text-muted-foreground" : "bg-primary/8 text-primary group-hover:bg-primary/12"
-                    }`}>
-                      <tool.icon className="h-5 w-5" />
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      {badgeText && (
-                        <span className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
-                          locked ? "bg-muted text-muted-foreground" : badgeColor
-                        }`}>
-                          {locked ? <Lock className="h-3 w-3" /> : required === "pro" ? <Crown className="h-3 w-3" /> : <Sparkles className="h-3 w-3" />} {badgeText}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <h3 className="mt-3 font-display text-sm font-semibold leading-tight text-foreground">{tool.name}</h3>
-                  <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed line-clamp-2">{tool.description}</p>
-                  {locked && (
-                    <span className="mt-3 inline-flex w-fit items-center gap-1 text-xs font-medium text-accent">
-                      <Lock className="h-3 w-3" /> Upgrade required
-                    </span>
-                  )}
-                </div>
-              );
-
-              return (
-                <ScrollReveal key={tool.id} delay={Math.min(i * 30, 240)}>
-                  <div className="relative">
-                    {locked ? (
-                      <button onClick={() => openUpgradeFor(tool.id)} className="text-left w-full">{card}</button>
-                    ) : (
-                      <Link to={`/tool/${tool.id}`} className="block">{card}</Link>
-                    )}
-                    {user && badgeText === null && (
-                      <button
-                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleFav(tool.id); }}
-                        className={`absolute top-3 right-3 z-10 flex h-7 w-7 items-center justify-center rounded-full transition-all ${
-                          fav ? "bg-amber-400/15 text-amber-500" : "bg-secondary/80 text-muted-foreground hover:text-amber-500"
-                        }`}
-                        aria-label={fav ? "Remove from favorites" : "Add to favorites"}
-                      >
-                        <Star className={`h-3.5 w-3.5 ${fav ? "fill-current" : ""}`} />
-                      </button>
-                    )}
-                    {user && badgeText !== null && (
-                      <button
-                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleFav(tool.id); }}
-                        className={`absolute bottom-3 right-3 z-10 flex h-7 w-7 items-center justify-center rounded-full transition-all ${
-                          fav ? "bg-amber-400/15 text-amber-500" : "bg-secondary/80 text-muted-foreground hover:text-amber-500"
-                        }`}
-                        aria-label={fav ? "Remove from favorites" : "Add to favorites"}
-                      >
-                        <Star className={`h-3.5 w-3.5 ${fav ? "fill-current" : ""}`} />
-                      </button>
-                    )}
-                  </div>
-                </ScrollReveal>
-              );
+              const badgeText = required === "pro" ? "Pro" : required === "creator" ? "Starter" : null;
+              const badgeColor = required === "pro" ? "bg-accent/10 text-accent" : required === "creator" ? "bg-primary/10 text-primary" : "";
+              const card = <div className={`group relative flex flex-col rounded-xl border bg-card p-5 shadow-soft transition-all duration-300 hover:shadow-card hover:-translate-y-0.5 active:scale-[0.98] ${locked ? "border-border/50 opacity-75" : "border-border"}`}>
+                <div className="flex items-start justify-between"><div className={`flex h-10 w-10 items-center justify-center rounded-lg transition-colors ${locked ? "bg-muted text-muted-foreground" : "bg-primary/8 text-primary group-hover:bg-primary/12"}`}><tool.icon className="h-5 w-5" /></div><div className="flex items-center gap-1.5">{badgeText && <span className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${locked ? "bg-muted text-muted-foreground" : badgeColor}`}>{locked ? <Lock className="h-3 w-3" /> : required === "pro" ? <Crown className="h-3 w-3" /> : <Sparkles className="h-3 w-3" />} {badgeText}</span>}</div></div>
+                <h3 className="mt-3 font-display text-sm font-semibold leading-tight text-foreground">{tool.name}</h3>
+                <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed line-clamp-2">{tool.description}</p>
+                {locked && <span className="mt-3 inline-flex w-fit items-center gap-1 text-xs font-medium text-accent"><Lock className="h-3 w-3" /> Upgrade required</span>}
+              </div>;
+              return <ScrollReveal key={tool.id} delay={Math.min(i * 30, 240)}><div className="relative">{locked ? <button onClick={() => openUpgradeFor(tool.id)} className="text-left w-full">{card}</button> : <Link to={`/tool/${tool.id}`} className="block">{card}</Link>}{user && badgeText === null && <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleFav(tool.id); }} className={`absolute top-3 right-3 z-10 flex h-7 w-7 items-center justify-center rounded-full transition-all ${fav ? "bg-amber-400/15 text-amber-500" : "bg-secondary/80 text-muted-foreground hover:text-amber-500"}`} aria-label={fav ? "Remove from favorites" : "Add to favorites"}><Star className={`h-3.5 w-3.5 ${fav ? "fill-current" : ""}`} /></button>}{user && badgeText !== null && <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleFav(tool.id); }} className={`absolute bottom-3 right-3 z-10 flex h-7 w-7 items-center justify-center rounded-full transition-all ${fav ? "bg-amber-400/15 text-amber-500" : "bg-secondary/80 text-muted-foreground hover:text-amber-500"}`} aria-label={fav ? "Remove from favorites" : "Add to favorites"}><Star className={`h-3.5 w-3.5 ${fav ? "fill-current" : ""}`} /></button>}</div></ScrollReveal>;
             })}
           </div>
         )}
       </div>
-
-      <UpgradeModal
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        onUpgrade={(t) => { setModalOpen(false); void handleUpgrade(t); }}
-        requiredPlan={modalRequired}
-        reason={modalReason}
-        trialAvailable={trialAvailable}
-        trialExhausted={trialExhausted}
-      />
-
+      <UpgradeModal open={modalOpen} onClose={() => setModalOpen(false)} onUpgrade={(t) => { setModalOpen(false); void handleUpgrade(t); }} requiredPlan={modalRequired} reason={modalReason} trialAvailable={trialAvailable} trialExhausted={trialExhausted} />
       <WelcomeTour open={tourOpen} onClose={() => setTourOpen(false)} />
     </div>
   );
