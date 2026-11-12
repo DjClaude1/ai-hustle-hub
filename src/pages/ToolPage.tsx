@@ -24,13 +24,42 @@ import { buildManualGenerationBrief, extractBasicCvData, isAiCreditsError } from
 import { JobAutoApply } from "@/components/JobAutoApply";
 import { BusinessExecute } from "@/components/BusinessExecute";
 
+const runOcr = async (source: HTMLCanvasElement | File): Promise<string> => {
+  const tesseract: any = await import(/* @vite-ignore */ "https://esm.sh/tesseract.js@5.1.1");
+  const worker = await tesseract.createWorker("eng");
+  try {
+    const result = await worker.recognize(source);
+    return String(result.data?.text || "").trim();
+  } finally {
+    await worker.terminate();
+  }
+};
 const extractPdfText = async (file: File): Promise<string> => {
   const pdfjs: any = await import("pdfjs-dist/build/pdf.mjs");
   pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
-  const buf = await file.arrayBuffer(); const pdf = await pdfjs.getDocument({ data: buf }).promise; let fullText = "";
-  for (let i = 1; i <= pdf.numPages; i++) { const page = await pdf.getPage(i); const content = await page.getTextContent(); const strings = content.items.map((it: any) => ("str" in it ? it.str : "")).filter(Boolean); fullText += strings.join(" ") + "\n\n"; }
+  const pdf = await pdfjs.getDocument({ data: await file.arrayBuffer() }).promise;
+  let fullText = "";
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    const strings = content.items.map((it: any) => ("str" in it ? it.str : "")).filter(Boolean);
+    let pageText = strings.join(" ").trim();
+    if (pageText.length < 25) {
+      const viewport = page.getViewport({ scale: 2 });
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.ceil(viewport.width);
+      canvas.height = Math.ceil(viewport.height);
+      const context = canvas.getContext("2d");
+      if (context) {
+        await page.render({ canvasContext: context, viewport }).promise;
+        pageText = await runOcr(canvas);
+      }
+    }
+    fullText += pageText + "\n\n";
+  }
   return fullText.trim();
 };
+const extractImageText = async (file: File): Promise<string> => runOcr(file);
 const extractDocxText = async (file: File): Promise<string> => {
   const mammoth: any = await import(/* @vite-ignore */ "https://esm.sh/mammoth@1.9.0");
   const result = await mammoth.extractRawText({ arrayBuffer: await file.arrayBuffer() });
@@ -87,7 +116,7 @@ const CvUploadSection = ({ onParsed, loading }: { onParsed: (data: Record<string
     setParsing(true);
     try {
       let cvText = "";
-      if (ext === "pdf") {
+      if (["jpg", "jpeg", "png", "webp", "bmp", "tif", "tiff"].includes(ext || "")) {\n        toast.message("Reading CV image with OCR…");\n        cvText = await extractImageText(file);\n      } else if (ext === "pdf") {
         toast.message("Reading PDF…");
         cvText = await extractPdfText(file);
       } else if (ext === "docx") {
@@ -106,7 +135,7 @@ const CvUploadSection = ({ onParsed, loading }: { onParsed: (data: Record<string
       } else if (ext === "txt" || ext === "md") {
         cvText = await file.text();
       } else {
-        toast.error("Unsupported format. Use PDF, DOC, DOCX, ODT, RTF, HTML, TXT or Markdown.");
+        toast.error("Unsupported format. Use PDF, DOC, DOCX, ODT, RTF, HTML, TXT, Markdown or an image (JPG, PNG, WEBP, TIFF).");
         setShowPaste(true);
         return;
       }
@@ -122,7 +151,7 @@ const CvUploadSection = ({ onParsed, loading }: { onParsed: (data: Record<string
       setShowPaste(true);
     } finally { setParsing(false); }
   };
-  return <div className="rounded-xl border border-dashed border-primary/30 bg-primary/5 p-4 space-y-3"><div className="flex items-center gap-3"><Upload className="h-5 w-5 text-primary shrink-0" /><div className="flex-1"><p className="text-sm font-medium text-foreground">Import your existing CV</p><p className="text-xs text-muted-foreground">Upload PDF, DOC, DOCX, ODT, RTF, HTML, TXT or MD — or paste text</p></div><div className="flex gap-2"><Button variant="outline" size="sm" onClick={() => setShowPaste(!showPaste)} disabled={parsing || loading}><FileText className="h-3.5 w-3.5" />{showPaste ? "Hide" : "Paste Text"}</Button><Button variant="outline" size="sm" onClick={() => fileRef.current?.click()} disabled={parsing || loading}>{parsing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}{parsing ? "Reading..." : "Upload File"}</Button></div></div>{showPaste && <div className="space-y-2 animate-fade-up"><textarea value={pasteText} onChange={(e) => setPasteText(e.target.value)} placeholder="Paste your full CV / resume text here…" rows={6} className="w-full rounded-lg border border-border bg-background p-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all resize-none" /><Button variant="hero" size="sm" onClick={() => parseCvText(pasteText)} disabled={parsing || pasteText.trim().length < 20} className="w-full">{parsing ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Parsing CV...</> : <><Sparkles className="h-3.5 w-3.5" /> Parse &amp; Auto-Fill</>}</Button></div>}<input ref={fileRef} type="file" className="hidden" accept=".pdf,.doc,.docx,.odt,.rtf,.html,.htm,.txt,.md" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); if (fileRef.current) fileRef.current.value = ""; }} /></div>;
+  return <div className="rounded-xl border border-dashed border-primary/30 bg-primary/5 p-4 space-y-3"><div className="flex items-center gap-3"><Upload className="h-5 w-5 text-primary shrink-0" /><div className="flex-1"><p className="text-sm font-medium text-foreground">Import your existing CV</p><p className="text-xs text-muted-foreground">Upload PDF, Word, ODT, RTF, HTML, TXT, Markdown or CV image (JPG/PNG/WEBP/TIFF)</p></div><div className="flex gap-2"><Button variant="outline" size="sm" onClick={() => setShowPaste(!showPaste)} disabled={parsing || loading}><FileText className="h-3.5 w-3.5" />{showPaste ? "Hide" : "Paste Text"}</Button><Button variant="outline" size="sm" onClick={() => fileRef.current?.click()} disabled={parsing || loading}>{parsing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}{parsing ? "Reading..." : "Upload File"}</Button></div></div>{showPaste && <div className="space-y-2 animate-fade-up"><textarea value={pasteText} onChange={(e) => setPasteText(e.target.value)} placeholder="Paste your full CV / resume text here…" rows={6} className="w-full rounded-lg border border-border bg-background p-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all resize-none" /><Button variant="hero" size="sm" onClick={() => parseCvText(pasteText)} disabled={parsing || pasteText.trim().length < 20} className="w-full">{parsing ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Parsing CV...</> : <><Sparkles className="h-3.5 w-3.5" /> Parse &amp; Auto-Fill</>}</Button></div>}<input ref={fileRef} type="file" className="hidden" accept=".pdf,.doc,.docx,.odt,.rtf,.html,.htm,.txt,.md,.jpg,.jpeg,.png,.webp,.bmp,.tif,.tiff,image/*" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); if (fileRef.current) fileRef.current.value = ""; }} /></div>;
 };
 
 const HistoryPanel = ({ toolId, onLoad }: { toolId: string; onLoad: (output: string, inputs: Record<string, string>) => void }) => {
