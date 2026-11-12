@@ -380,6 +380,28 @@ export const tools: Tool[] = [
 
   // ── Freelancing ─────────────────────────────────
   {
+    id: "freelance-invoice-generator",
+    name: "Professional Invoice Generator",
+    description: "Create polished, client-ready freelance invoices with line items, VAT, payment terms and clear totals",
+    category: "Freelancing",
+    icon: FileSpreadsheet,
+    prompt: `Act as a professional invoicing assistant. Create a polished, client-ready invoice using ONLY the supplied details. Format it as a clean, clearly structured invoice with: business/freelancer details, client billing details, invoice number, issue date, due date, currency, itemized services (description, quantity, unit rate and line total), subtotal, any discount, VAT/tax rate and amount, total due, amount paid and balance due, payment instructions, payment terms, late-payment note, and a short professional thank-you note. Show all calculations consistently and round monetary amounts to 2 decimal places. If a value is missing, label it "Not provided" rather than inventing it. Do not invent registration numbers, VAT numbers, bank details, addresses, legal terms or payment references. For South African invoices, use ZAR/R and show VAT only at the rate explicitly supplied by the user; do not assume the freelancer is VAT registered. Clearly distinguish a quotation/pro-forma invoice from a tax invoice when requested. End with a brief pre-send checklist of details the freelancer should verify. Output must be easy to copy into a document or PDF.`,
+    inputs: [
+      { key: "business", label: "Your business / freelancer details", placeholder: "Name or business name, address, email, phone, website (as applicable)", type: "textarea", required: true },
+      { key: "client", label: "Client billing details", placeholder: "Client name / company, billing address, email", type: "textarea", required: true },
+      { key: "invoiceNumber", label: "Invoice number", placeholder: "e.g. INV-2026-001", type: "text", required: true },
+      { key: "issueDate", label: "Invoice issue date", placeholder: "e.g. 12 November 2026", type: "text", required: true },
+      { key: "dueDate", label: "Payment due date", placeholder: "e.g. 26 November 2026", type: "text", required: true },
+      { key: "currency", label: "Currency", placeholder: "Select currency", type: "select", options: ["ZAR (R)", "USD ($)", "EUR (€)", "GBP (£)", "Other"] },
+      { key: "items", label: "Services / line items", placeholder: "One item per line: description | quantity | unit price. Example: Website design | 1 | 8500.00", type: "textarea", required: true },
+      { key: "discount", label: "Discount", placeholder: "e.g. R500 or 5% (enter 0 if none)", type: "text" },
+      { key: "vat", label: "VAT / tax", placeholder: "e.g. Not registered / 15% VAT / 8% sales tax", type: "text" },
+      { key: "paymentTerms", label: "Payment terms", placeholder: "e.g. Due within 14 days; 50% deposit already paid", type: "text" },
+      { key: "paymentDetails", label: "Payment instructions", placeholder: "Bank / account holder / account number / branch code or payment link. Include only details you want shown.", type: "textarea" },
+      { key: "notes", label: "Additional notes", placeholder: "PO number, project reference, delivery notes, amount already paid, late-payment policy, or special instructions", type: "textarea" },
+    ],
+  },
+  {
     id: "fiverr-gig",
     name: "Fiverr Gig Generator",
     description: "Create optimized Fiverr gig titles, descriptions, packages, and FAQ",
