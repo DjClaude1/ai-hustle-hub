@@ -31,7 +31,34 @@ const extractPdfText = async (file: File): Promise<string> => {
   for (let i = 1; i <= pdf.numPages; i++) { const page = await pdf.getPage(i); const content = await page.getTextContent(); const strings = content.items.map((it: any) => ("str" in it ? it.str : "")).filter(Boolean); fullText += strings.join(" ") + "\n\n"; }
   return fullText.trim();
 };
-const extractDocxText = async (file: File): Promise<string> => { const buf = await file.arrayBuffer(); const raw = new TextDecoder("utf-8", { fatal: false }).decode(buf); const matches = raw.match(/[A-Za-z][A-Za-z0-9 ,.\-_/@:&'()+]{8,}/g); if (!matches) return ""; return matches.join(" ").replace(/\s+/g, " ").trim(); };
+const extractDocxText = async (file: File): Promise<string> => {
+  const mammoth: any = await import(/* @vite-ignore */ "https://esm.sh/mammoth@1.9.0");
+  const result = await mammoth.extractRawText({ arrayBuffer: await file.arrayBuffer() });
+  return String(result.value || "").trim();
+};
+const extractRtfText = (raw: string): string => raw
+  .replace(/\\\x27[0-9a-f]{2}/gi, " ")
+  .replace(/\\u-?\d+\??/g, " ")
+  .replace(/\\[a-z]+-?\d* ?/gi, " ")
+  .replace(/[{}]/g, " ").replace(/\s+/g, " ").trim();
+const extractHtmlText = (raw: string): string => {
+  const doc = new DOMParser().parseFromString(raw, "text/html");
+  doc.querySelectorAll("script,style,noscript").forEach((node) => node.remove());
+  return (doc.body?.innerText || doc.body?.textContent || "").trim();
+};
+const extractOdtText = async (file: File): Promise<string> => {
+  const zip: any = await import(/* @vite-ignore */ "https://esm.sh/fflate@0.8.2");
+  const archive = zip.unzipSync(new Uint8Array(await file.arrayBuffer()));
+  const content = archive["content.xml"];
+  if (!content) throw new Error("No readable ODT content found");
+  const xml = new DOMParser().parseFromString(new TextDecoder().decode(content), "application/xml");
+  return Array.from(xml.getElementsByTagName("text:p")).map((node) => node.textContent || "").join("\n").trim();
+};
+const extractLegacyDocText = async (file: File): Promise<string> => {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const decoded = [new TextDecoder("windows-1252").decode(bytes), new TextDecoder("utf-16le").decode(bytes)];
+  return decoded.map((raw) => (raw.match(/[A-Za-z0-9][A-Za-z0-9 .,;:\x27"()\-+/@#&%!?]{3,}/g) || []).join(" ").replace(/\s+/g, " ").trim()).sort((a, b) => b.length - a.length)[0] || "";
+};
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate`;
 const PARSE_CV_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/parse-cv`;
 type GenerationFallback = { title: string; prompt: string };
@@ -54,8 +81,48 @@ const TemplateSelector = ({ selected, onSelect, isPro }: { selected: string; onS
 const CvUploadSection = ({ onParsed, loading }: { onParsed: (data: Record<string, string>) => void; loading: boolean }) => {
   const [parsing, setParsing] = useState(false); const [showPaste, setShowPaste] = useState(false); const [pasteText, setPasteText] = useState(""); const fileRef = useRef<HTMLInputElement>(null);
   const parseCvText = async (cvText: string) => { if (cvText.trim().length < 20) { toast.error("Text is too short. Please provide more CV content."); return; } setParsing(true); try { const resp = await fetch(PARSE_CV_URL, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` }, body: JSON.stringify({ cvText }) }); if (resp.ok) { onParsed(await resp.json()); toast.success("CV parsed successfully! Review the filled fields below."); setShowPaste(false); setPasteText(""); return; } const fallbackData = extractBasicCvData(cvText); if (Object.values(fallbackData).some(Boolean)) { onParsed(fallbackData); toast.success(resp.status === 402 ? "AI parsing is paused — we extracted what we could locally. Review below." : "We extracted basic details. Review and complete them below."); setShowPaste(false); setPasteText(""); } else toast.error("Could not extract details. Please fill in the fields manually."); } catch (e) { console.error("CV parse error:", e); const fallbackData = extractBasicCvData(cvText); if (Object.values(fallbackData).some(Boolean)) { onParsed(fallbackData); toast.success("Extracted basic details locally. Review and edit below."); setShowPaste(false); setPasteText(""); } else toast.error("Failed to parse CV. Please fill in the fields manually."); } finally { setParsing(false); } };
-  const handleFile = async (file: File) => { if (!file) return; const ext = file.name.split(".").pop()?.toLowerCase(); setParsing(true); try { let cvText = ""; if (ext === "pdf") { toast.message("Reading PDF…"); cvText = await extractPdfText(file); if (cvText.length < 30) { toast.error("This PDF appears to be a scanned image. Please paste the text instead."); setShowPaste(true); return; } } else if (ext === "docx" || ext === "doc") { toast.message("Reading document…"); cvText = await extractDocxText(file); if (cvText.length < 30) { toast.error("Could not read the Word document. Please paste the text instead."); setShowPaste(true); return; } } else if (ext === "txt" || ext === "md") cvText = await file.text(); else { toast.error("Unsupported file type. Use PDF, DOCX, or TXT — or paste your CV text."); setShowPaste(true); return; } await parseCvText(cvText); } catch (e) { console.error("File read error:", e); toast.error("Could not read the file. Try pasting your CV text instead."); setShowPaste(true); } finally { setParsing(false); } };
-  return <div className="rounded-xl border border-dashed border-primary/30 bg-primary/5 p-4 space-y-3"><div className="flex items-center gap-3"><Upload className="h-5 w-5 text-primary shrink-0" /><div className="flex-1"><p className="text-sm font-medium text-foreground">Import your existing CV</p><p className="text-xs text-muted-foreground">Upload PDF, DOCX or TXT — or paste text to auto-fill fields</p></div><div className="flex gap-2"><Button variant="outline" size="sm" onClick={() => setShowPaste(!showPaste)} disabled={parsing || loading}><FileText className="h-3.5 w-3.5" />{showPaste ? "Hide" : "Paste Text"}</Button><Button variant="outline" size="sm" onClick={() => fileRef.current?.click()} disabled={parsing || loading}>{parsing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}{parsing ? "Reading..." : "Upload File"}</Button></div></div>{showPaste && <div className="space-y-2 animate-fade-up"><textarea value={pasteText} onChange={(e) => setPasteText(e.target.value)} placeholder="Paste your full CV / resume text here…" rows={6} className="w-full rounded-lg border border-border bg-background p-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all resize-none" /><Button variant="hero" size="sm" onClick={() => parseCvText(pasteText)} disabled={parsing || pasteText.trim().length < 20} className="w-full">{parsing ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Parsing CV...</> : <><Sparkles className="h-3.5 w-3.5" /> Parse &amp; Auto-Fill</>}</Button></div>}<input ref={fileRef} type="file" className="hidden" accept=".pdf,.doc,.docx,.txt,.md" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); if (fileRef.current) fileRef.current.value = ""; }} /></div>;
+  const handleFile = async (file: File) => {
+    if (!file) return;
+    const ext = file.name.split(".").pop()?.toLowerCase();
+    setParsing(true);
+    try {
+      let cvText = "";
+      if (ext === "pdf") {
+        toast.message("Reading PDF…");
+        cvText = await extractPdfText(file);
+      } else if (ext === "docx") {
+        toast.message("Extracting Word document…");
+        cvText = await extractDocxText(file);
+      } else if (ext === "doc") {
+        toast.message("Reading legacy Word document…");
+        cvText = await extractLegacyDocText(file);
+      } else if (ext === "odt") {
+        toast.message("Extracting OpenDocument…");
+        cvText = await extractOdtText(file);
+      } else if (ext === "rtf") {
+        cvText = extractRtfText(await file.text());
+      } else if (ext === "html" || ext === "htm") {
+        cvText = extractHtmlText(await file.text());
+      } else if (ext === "txt" || ext === "md") {
+        cvText = await file.text();
+      } else {
+        toast.error("Unsupported format. Use PDF, DOC, DOCX, ODT, RTF, HTML, TXT or Markdown.");
+        setShowPaste(true);
+        return;
+      }
+      if (cvText.trim().length < 30) {
+        toast.error(ext === "doc" ? "This legacy DOC file could not be read reliably. Save it as DOCX or PDF and upload again." : "No readable CV text found. Try DOCX or PDF, or paste the CV text.");
+        setShowPaste(true);
+        return;
+      }
+      await parseCvText(cvText);
+    } catch (e) {
+      console.error("File read error:", e);
+      toast.error("Could not extract text. Try saving the file as DOCX or PDF, or paste the CV text.");
+      setShowPaste(true);
+    } finally { setParsing(false); }
+  };
+  return <div className="rounded-xl border border-dashed border-primary/30 bg-primary/5 p-4 space-y-3"><div className="flex items-center gap-3"><Upload className="h-5 w-5 text-primary shrink-0" /><div className="flex-1"><p className="text-sm font-medium text-foreground">Import your existing CV</p><p className="text-xs text-muted-foreground">Upload PDF, DOC, DOCX, ODT, RTF, HTML, TXT or MD — or paste text</p></div><div className="flex gap-2"><Button variant="outline" size="sm" onClick={() => setShowPaste(!showPaste)} disabled={parsing || loading}><FileText className="h-3.5 w-3.5" />{showPaste ? "Hide" : "Paste Text"}</Button><Button variant="outline" size="sm" onClick={() => fileRef.current?.click()} disabled={parsing || loading}>{parsing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}{parsing ? "Reading..." : "Upload File"}</Button></div></div>{showPaste && <div className="space-y-2 animate-fade-up"><textarea value={pasteText} onChange={(e) => setPasteText(e.target.value)} placeholder="Paste your full CV / resume text here…" rows={6} className="w-full rounded-lg border border-border bg-background p-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all resize-none" /><Button variant="hero" size="sm" onClick={() => parseCvText(pasteText)} disabled={parsing || pasteText.trim().length < 20} className="w-full">{parsing ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Parsing CV...</> : <><Sparkles className="h-3.5 w-3.5" /> Parse &amp; Auto-Fill</>}</Button></div>}<input ref={fileRef} type="file" className="hidden" accept=".pdf,.doc,.docx,.odt,.rtf,.html,.htm,.txt,.md" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); if (fileRef.current) fileRef.current.value = ""; }} /></div>;
 };
 
 const HistoryPanel = ({ toolId, onLoad }: { toolId: string; onLoad: (output: string, inputs: Record<string, string>) => void }) => {
