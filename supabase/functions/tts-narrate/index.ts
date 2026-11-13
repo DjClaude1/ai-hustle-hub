@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { requirePro, corsHeaders as premiumCorsHeaders } from "../_shared/proAccess.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -6,9 +7,11 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  if (req.method === "OPTIONS") return new Response(null, { headers: { ...corsHeaders, ...premiumCorsHeaders } });
 
   try {
+    const gate = await requirePro(req);
+    if (gate instanceof Response) return gate;
     const { text, voice } = await req.json();
     if (!text || typeof text !== "string") {
       return new Response(JSON.stringify({ error: "text required" }), {
