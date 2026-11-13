@@ -28,7 +28,7 @@ interface ClipChoice {
 
 const FacelessVideoPage = () => {
   const { user, session } = useAuth();
-  const { canAccessTool, trialActive, trialAvailable, trialRemaining } = useSubscription();
+  const { canAccessTool } = useSubscription();
   const navigate = useNavigate();
 
   const [topic, setTopic] = useState("");
@@ -254,7 +254,7 @@ const FacelessVideoPage = () => {
             <p className="text-sm text-muted-foreground">AI script → scene splits → Pexels footage → stitched MP4</p>
           </div>
           <span className="flex items-center gap-1 rounded-full bg-accent/10 px-2.5 py-1 text-xs font-medium text-accent">
-            <Crown className="h-3 w-3" /> Pro
+            <Crown className="h-3 w-3" /> Premium · coming soon
           </span>
         </div>
 
@@ -262,26 +262,18 @@ const FacelessVideoPage = () => {
           <div className="mb-4 rounded-xl border border-accent/30 bg-accent/5 p-6 text-center">
             <Lock className="h-8 w-8 text-accent mx-auto mb-2" />
             <h3 className="font-display text-lg font-semibold text-foreground">
-              {trialAvailable ? "Try Faceless Video Studio free" : "Pro-only tool"}
+              Premium feature — coming soon
             </h3>
             <p className="text-sm text-muted-foreground mt-1 mb-4">
-              {trialAvailable
-                ? "3 free premium generations — authorize PayPal, no charge for 7 days."
-                : "Upgrade to Pro to generate faceless YouTube & TikTok videos end-to-end."}
+              "This video workflow uses multiple AI and media services. It will return later as an optional premium feature."
             </p>
             <Button variant="accent" size="sm" onClick={() => setUpgradeOpen(true)}>
-              <Crown className="h-4 w-4" /> {trialAvailable ? "Start free trial" : "Upgrade to Pro"}
+              <Crown className="h-4 w-4" /> Why is this locked?
             </Button>
           </div>
         )}
 
-        {trialActive && !locked && (
-          <div className="mb-4 flex items-center gap-2 rounded-lg border border-accent/30 bg-accent/5 p-3 text-sm text-accent">
-            <Sparkles className="h-4 w-4" />
-            <span>Premium trial active — <strong>{trialRemaining}</strong> premium generation{trialRemaining !== 1 ? "s" : ""} remaining.</span>
-          </div>
-        )}
-
+        
         {/* Inputs */}
         <div className="rounded-xl border border-border bg-card p-6 shadow-soft space-y-4">
           <div>
@@ -455,30 +447,7 @@ const FacelessVideoPage = () => {
         )}
       </div>
 
-      <UpgradeModal
-        open={upgradeOpen}
-        onClose={() => setUpgradeOpen(false)}
-        onUpgrade={async (tier) => {
-          setUpgradeOpen(false);
-          if (!user || !session) { navigate("/auth"); return; }
-          try {
-            const { data, error: err } = await supabase.functions.invoke("paypal-create-subscription", {
-              body: {
-                tier,
-                returnUrl: `${window.location.origin}/dashboard`,
-                cancelUrl: `${window.location.origin}/dashboard?paypal=cancelled`,
-              },
-            });
-            if (err) throw err;
-            if (data?.approveUrl) window.location.href = data.approveUrl;
-          } catch (e) {
-            toast.error(e instanceof Error ? e.message : "Payment failed");
-          }
-        }}
-        requiredPlan="pro"
-        trialAvailable={trialAvailable}
-        trialExhausted={!trialActive && trialRemaining === 0 && !trialAvailable}
-      />
+      <UpgradeModal open={upgradeOpen} onClose={() => setUpgradeOpen(false)} requiredPlan="pro" />
     </div>
   );
 };

@@ -24,8 +24,8 @@ const SLIDES = [
   },
   {
     icon: Crown,
-    title: "Free forever — upgrade any time",
-    desc: "Free includes 5 generations/day. Creator ($19) and Pro ($49) unlock unlimited use, exports, and premium tools.",
+    title: "Free access while we grow",
+    desc: "Enjoy 20 AI generations every day, all standard tools, all resume templates, exports, saved history and favorites. No payment details required.
     accent: "from-accent/20 to-primary/0",
   },
 ];
