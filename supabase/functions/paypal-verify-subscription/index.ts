@@ -39,13 +39,16 @@ Deno.serve(async (req) => {
     if (!r.ok) throw new Error("Unable to verify the PayPal subscription.");
     const [customUserId, tier] = String(sub.custom_id || "").split("|");
     if (customUserId !== user.id) return new Response(JSON.stringify({ error: "Subscription does not belong to user" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    const authorized = sub.status === "ACTIVE" || sub.status === "APPROVED" || sub.status === "APPROVAL_PENDING";
+    // Only an ACTIVE subscription is authorized. APPROVAL_PENDING and APPROVED
+    // must not grant premium access until PayPal confirms activation.
+    const authorized = sub.status === "ACTIVE";
     const cycleExec = sub.billing_info?.cycle_executions ?? [];
     const trialCycle = cycleExec.find((c: any) => c.tenure_type === "TRIAL");
     const regularCycle = cycleExec.find((c: any) => c.tenure_type === "REGULAR");
     const paidCyclesDone = Number(regularCycle?.cycles_completed ?? 0);
-    const inTrial = paidCyclesDone === 0 && sub.status !== "CANCELLED" && sub.status !== "EXPIRED";
-    await supabase.from("payments").update({ status: sub.status === "ACTIVE" ? "TRIAL" : sub.status, updated_at: new Date().toISOString() }).eq("subscription_id", subscriptionId);
+    const inTrial = authorized && Boolean(trialCycle) && paidCyclesDone === 0;
+    const paidActive = authorized && !inTrial && sub.billing_info?.last_payment?.status === "COMPLETED";
+    await supabase.from("payments").update({ status: inTrial ? "TRIAL" : paidActive ? "ACTIVE" : sub.status, updated_at: new Date().toISOString() }).eq("subscription_id", subscriptionId);
     if (authorized && (tier === "creator" || tier === "pro")) {
       if (inTrial) {
         const trialEnds = trialCycle?.next_billing_time ? new Date(trialCycle.next_billing_time) : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
@@ -59,11 +62,11 @@ Deno.serve(async (req) => {
           subscription_status: "trial",
           updated_at: new Date().toISOString(),
         }).eq("id", user.id);
-      } else {
+      } else if (paidActive) {
         await supabase.from("profiles").update({ subscription_tier: tier, is_premium: true, trial_active: false, subscription_status: "active", paypal_subscription_id: subscriptionId, updated_at: new Date().toISOString() }).eq("id", user.id);
       }
     }
-    return new Response(JSON.stringify({ status: sub.status, tier, active: authorized, inTrial }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ status: sub.status, tier, active: inTrial || paidActive, inTrial }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Subscription verification failed." }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
