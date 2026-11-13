@@ -5,7 +5,7 @@ interface CreatePayfastCheckoutParams { accessToken: string; cancelUrl: string; 
 export const createPayfastCheckout = async ({ accessToken, cancelUrl, returnUrl, period }: CreatePayfastCheckoutParams): Promise<PayfastCheckoutResponse> => {
   const response = await fetch(PAYFAST_URL, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+    headers: { "Content-Type": "application/json", apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY, Authorization: `Bearer ${accessToken}` },
     body: JSON.stringify({ tier: "pro", period, returnUrl, cancelUrl }),
   });
   const data = await response.json().catch(() => ({}));
