@@ -11,7 +11,7 @@ function validSourceIp(req: Request) {
   const ip = raw.trim();
   return ALLOWED_SINGLE.has(ip) || ALLOWED_RANGES.some(range => inCidr(ip, range));
 }
-function encodeValue(value: string) { return encodeURIComponent(value.trim()).replace(/%20/g, "+"); }
+function encodeValue(value: string) { return encodeURIComponent(value).replace(/[!'()*~]/g, char => `%${char.charCodeAt(0).toString(16).toUpperCase()}`).replace(/%20/g, "+"); }
 function md5(value: string) { return createHash("md5").update(value).digest("hex"); }
 async function validSignature(params: URLSearchParams, passphrase: string) {
   const pairs: string[] = [];

@@ -10,7 +10,7 @@ const PLANS: Record<string, { amount: number; frequency: string; label: string }
   monthly: { amount: 199, frequency: "3", label: "Monthly Premium" },
   annual: { amount: 1990, frequency: "6", label: "Annual Premium" },
 };
-const encodeValue = (value: string) => encodeURIComponent(value.trim()).replace(/%20/g, "+");
+const encodeValue = (value: string) => encodeURIComponent(value.trim()).replace(/[!'()*~]/g, char => `%${char.charCodeAt(0).toString(16).toUpperCase()}`).replace(/%20/g, "+");
 function md5(value: string) { return createHash("md5").update(value).digest("hex"); }
 function makeSignature(data: Record<string, string>, passphrase: string) {
   const params = Object.entries(data).filter(([, value]) => value !== "").map(([key, value]) => `${key}=${encodeValue(value)}`).join("&");
