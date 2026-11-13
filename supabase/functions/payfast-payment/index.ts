@@ -25,7 +25,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
-  if (Deno.env.get("BILLING_ENABLED") !== "true") return json({ error: "Premium checkout is being prepared. Please try again soon." }, 503);
+  if (Deno.env.get("PAYFAST_BILLING_ENABLED") !== "true") return json({ error: "Premium checkout is being prepared. Please try again soon." }, 503);
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) return json({ error: "Please sign in before subscribing." }, 401);
