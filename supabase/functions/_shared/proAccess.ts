@@ -19,11 +19,12 @@ export async function requirePro(req: Request): Promise<{ userId: string } | Res
   if (!user) return json({ error: "Sign in required", code: "AUTH_REQUIRED" }, 401);
   const admin = createClient(url, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
   const [{ data: profile }, { data: isAdmin }] = await Promise.all([
-    admin.from("profiles").select("subscription_tier, is_premium, trial_active").eq("id", user.id).maybeSingle(),
+    admin.from("profiles").select("subscription_tier, is_premium, trial_active, trial_ends_at").eq("id", user.id).maybeSingle(),
     admin.rpc("has_role", { _user_id: user.id, _role: "admin" }),
   ]);
-  const ok = isAdmin || profile?.is_premium || profile?.trial_active ||
-    ["pro", "business"].includes(profile?.subscription_tier ?? "");
-  if (!ok) return json({ error: "Job search & auto apply is a Pro feature", code: "UPGRADE_REQUIRED", required: "pro" }, 403);
+  const trialValid = Boolean(profile?.trial_active) && (!profile?.trial_ends_at || new Date(profile.trial_ends_at).getTime() > Date.now());
+  const ok = Boolean(isAdmin) || Boolean(profile?.is_premium) ||
+    ["pro", "business"].includes(profile?.subscription_tier ?? "") || trialValid;
+  if (!ok) return json({ error: "This workflow is included with AI Hustle Hub Premium", code: "UPGRADE_REQUIRED", required: "pro" }, 403);
   return { userId: user.id };
 }
