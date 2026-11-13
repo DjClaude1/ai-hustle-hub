@@ -25,7 +25,7 @@ const SLIDES = [
   {
     icon: Crown,
     title: "Free access while we grow",
-    desc: "Enjoy 20 AI generations every day, all standard tools, all resume templates, exports, saved history and favorites. No payment details required.
+    desc: "Enjoy 20 AI generations every day, all standard tools, all resume templates, exports, saved history and favorites. No payment details required.",
     accent: "from-accent/20 to-primary/0",
   },
 ];
