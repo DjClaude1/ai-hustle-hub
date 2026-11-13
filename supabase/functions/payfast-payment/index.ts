@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { createHash } from "node:crypto";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -10,10 +11,7 @@ const PLANS: Record<string, { amount: number; frequency: string; label: string }
   annual: { amount: 1990, frequency: "6", label: "Annual Premium" },
 };
 const encodeValue = (value: string) => encodeURIComponent(value.trim()).replace(/%20/g, "+");
-async function md5(value: string) {
-  const digest = await crypto.subtle.digest("MD5", new TextEncoder().encode(value));
-  return Array.from(new Uint8Array(digest)).map(byte => byte.toString(16).padStart(2, "0")).join("");
-}
+function md5(value: string) { return createHash("md5").update(value).digest("hex"); }
 function makeSignature(data: Record<string, string>, passphrase: string) {
   const params = Object.entries(data).filter(([, value]) => value !== "").map(([key, value]) => `${key}=${encodeValue(value)}`).join("&");
   return md5(`${params}&passphrase=${encodeValue(passphrase)}`);
