@@ -27,7 +27,14 @@ async function getAccessToken() {
 }
 
 async function ensurePlan(supabase: any, token: string, tier: "creator" | "pro", includeTrial: boolean) {
-  const { data: cached } = await supabase.from("paypal_plans").select("*").eq("tier", tier).maybeSingle();
+  const { data: cached, error: cacheError } = await supabase
+    .from("paypal_plans")
+    .select("*")
+    .eq("tier", tier)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (cacheError) throw new Error("Unable to load the PayPal subscription plan cache.");
   if (includeTrial && cached?.plan_id && Number(cached.amount) === Number(TIERS[tier].amount) && cached.currency === "USD") {
     return cached.plan_id as string;
   }
@@ -56,10 +63,10 @@ async function ensurePlan(supabase: any, token: string, tier: "creator" | "pro",
   const plan = await planRes.json();
   if (!planRes.ok) throw new Error("Unable to create the PayPal subscription plan.");
   if (includeTrial) {
-    const { error: savePlanError } = await supabase.from("paypal_plans").upsert(
-      { tier, product_id: product.id, plan_id: plan.id, amount: Number(cfg.amount), currency: "USD" },
-      { onConflict: "tier" },
-    );
+    const planRow = { tier, product_id: product.id, plan_id: plan.id, amount: Number(cfg.amount), currency: "USD" };
+    const { error: savePlanError } = cached?.id
+      ? await supabase.from("paypal_plans").update(planRow).eq("id", cached.id)
+      : await supabase.from("paypal_plans").insert(planRow);
     if (savePlanError) throw new Error("Unable to save the PayPal subscription plan.");
   }
   return plan.id as string;
