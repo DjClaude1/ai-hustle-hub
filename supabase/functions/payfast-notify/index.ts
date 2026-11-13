@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { createHash } from "node:crypto";
 
 const corsHeaders = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "content-type", "Access-Control-Allow-Methods": "POST, OPTIONS" };
 const ALLOWED_RANGES = ["197.97.145.144/28", "41.74.179.192/27", "102.216.36.0/28", "102.216.36.128/28"];
@@ -11,11 +12,11 @@ function validSourceIp(req: Request) {
   return ALLOWED_SINGLE.has(ip) || ALLOWED_RANGES.some(range => inCidr(ip, range));
 }
 function encodeValue(value: string) { return encodeURIComponent(value.trim()).replace(/%20/g, "+"); }
-async function md5(value: string) { const digest = await crypto.subtle.digest("MD5", new TextEncoder().encode(value)); return Array.from(new Uint8Array(digest)).map(byte => byte.toString(16).padStart(2, "0")).join(""); }
+function md5(value: string) { return createHash("md5").update(value).digest("hex"); }
 async function validSignature(params: URLSearchParams, passphrase: string) {
   const pairs: string[] = [];
   for (const [key, value] of params.entries()) { if (key === "signature") break; pairs.push(`${key}=${encodeValue(value)}`); }
-  const expected = await md5(`${pairs.join("&")}&passphrase=${encodeValue(passphrase)}`);
+  const expected = md5(`${pairs.join("&")}&passphrase=${encodeValue(passphrase)}`);
   return expected === (params.get("signature") || "").toLowerCase();
 }
 Deno.serve(async (req) => {
@@ -35,20 +36,31 @@ Deno.serve(async (req) => {
     const validationText = (await validation.text()).trim();
     if (!validation.ok || validationText !== "VALID") return new Response("PayFast server validation failed", { status: 400, headers: corsHeaders });
 
-    const userId = params.get("custom_str1");
-    const period = params.get("custom_str2");
+    let userId = params.get("custom_str1");
+    let period = params.get("custom_str2");
     const tier = params.get("custom_str3") || "pro";
     const paymentId = params.get("m_payment_id");
     const status = params.get("payment_status");
     const token = params.get("token");
     const gross = Number(params.get("amount_gross"));
-    if (!userId || !paymentId || tier !== "pro" || !["monthly", "annual"].includes(period || "") || !Number.isFinite(gross)) return new Response("Invalid payment details", { status: 400, headers: corsHeaders });
-    const expectedAmount = period === "annual" ? 1990 : 199;
-    if (Math.abs(gross - expectedAmount) > 0.01) return new Response("Payment amount mismatch", { status: 400, headers: corsHeaders });
+    if (!paymentId || tier !== "pro" || !["COMPLETE", "CANCELLED", "FAILED"].includes(status || "")) return new Response("Invalid payment details", { status: 400, headers: corsHeaders });
 
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-    const { data: profile } = await supabase.from("profiles").select("subscription_tier,subscription_status,payfast_subscription_token,subscription_period").eq("id", userId).maybeSingle();
-    if (!profile) return new Response("Unknown account", { status: 404, headers: corsHeaders });
+    let profile: any = null;
+    if (userId) {
+      const { data } = await supabase.from("profiles").select("id,subscription_tier,subscription_status,payfast_subscription_token,subscription_period").eq("id", userId).maybeSingle();
+      profile = data;
+    }
+    if (!profile && token) {
+      const { data } = await supabase.from("profiles").select("id,subscription_tier,subscription_status,payfast_subscription_token,subscription_period").eq("payfast_subscription_token", token).maybeSingle();
+      profile = data;
+      userId = data?.id ?? null;
+    }
+    if (!profile || !userId) return new Response("Unknown account", { status: 404, headers: corsHeaders });
+    period = period || profile.subscription_period;
+    if (!["monthly", "annual"].includes(period || "")) return new Response("Unknown billing period", { status: 400, headers: corsHeaders });
+    const expectedAmount = period === "annual" ? 1990 : 199;
+    if (status === "COMPLETE" && (!Number.isFinite(gross) || Math.abs(gross - expectedAmount) > 0.01)) return new Response("Payment amount mismatch", { status: 400, headers: corsHeaders });
     const { data: payment } = await supabase.from("payments").select("id,user_id,amount,tier,metadata,subscription_id").eq("payment_id", paymentId).maybeSingle();
     const isInitialPayment = Boolean(payment && payment.user_id === userId && payment.tier === "pro" && Math.abs(Number(payment.amount) - expectedAmount) <= 0.01);
     const isKnownRecurring = Boolean(token && profile.payfast_subscription_token === token && profile.subscription_period === period);
