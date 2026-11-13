@@ -43,7 +43,8 @@ Deno.serve(async (req) => {
     const status = params.get("payment_status");
     const token = params.get("token");
     const gross = Number(params.get("amount_gross"));
-    if (!paymentId || tier !== "pro" || !["COMPLETE", "CANCELLED", "FAILED"].includes(status || "")) return new Response("Invalid payment details", { status: 400, headers: corsHeaders });
+    if ((status !== "CANCELLED" && !paymentId) || tier !== "pro" || !["COMPLETE", "CANCELLED", "FAILED"].includes(status || "")) return new Response("Invalid payment details", { status: 400, headers: corsHeaders });
+    if (status === "CANCELLED" && !token) return new Response("Missing subscription token", { status: 400, headers: corsHeaders });
 
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     let profile: any = null;
@@ -61,7 +62,7 @@ Deno.serve(async (req) => {
     if (!["monthly", "annual"].includes(period || "")) return new Response("Unknown billing period", { status: 400, headers: corsHeaders });
     const expectedAmount = period === "annual" ? 1990 : 199;
     if (status === "COMPLETE" && (!Number.isFinite(gross) || Math.abs(gross - expectedAmount) > 0.01)) return new Response("Payment amount mismatch", { status: 400, headers: corsHeaders });
-    const { data: payment } = await supabase.from("payments").select("id,user_id,amount,tier,metadata,subscription_id").eq("payment_id", paymentId).maybeSingle();
+    const { data: payment } = paymentId ? await supabase.from("payments").select("id,user_id,amount,tier,metadata,subscription_id").eq("payment_id", paymentId).maybeSingle() : { data: null };
     const isInitialPayment = Boolean(payment && payment.user_id === userId && payment.tier === "pro" && Math.abs(Number(payment.amount) - expectedAmount) <= 0.01);
     const isKnownRecurring = Boolean(token && profile.payfast_subscription_token === token && profile.subscription_period === period);
     if (!isInitialPayment && !isKnownRecurring) return new Response("Payment reference not recognized", { status: 404, headers: corsHeaders });
