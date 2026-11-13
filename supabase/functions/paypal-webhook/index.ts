@@ -78,9 +78,14 @@ Deno.serve(async (req) => {
       return new Response("ignored: no subscription id", { headers: corsHeaders });
     }
 
-    // Fallback: look up user via stored paypal_subscription_id if custom_id absent
-    let resolvedUserId = userId;
-    let resolvedTier = tier;
+    // Resolve from the payment row when PayPal omits custom_id on sale events.
+    const { data: payment } = await supabase
+      .from("payments")
+      .select("user_id, tier, metadata")
+      .eq("subscription_id", subscriptionId)
+      .maybeSingle();
+    let resolvedUserId = userId || payment?.user_id;
+    let resolvedTier = tier || payment?.tier;
     if (!resolvedUserId) {
       const { data: profile } = await supabase
         .from("profiles")
@@ -92,15 +97,17 @@ Deno.serve(async (req) => {
         resolvedTier = resolvedTier || profile.trial_plan;
       }
     }
+    const trialPurchase = payment?.metadata?.trial === true;
     if (!resolvedUserId) return new Response("ignored: no user", { headers: corsHeaders });
 
     // Trial began (subscription approved & moved to ACTIVE with $0 trial cycle).
-    if (type === "BILLING.SUBSCRIPTION.ACTIVATED" && (resolvedTier === "creator" || resolvedTier === "pro")) {
+    if (type === "BILLING.SUBSCRIPTION.ACTIVATED" && trialPurchase && (resolvedTier === "creator" || resolvedTier === "pro")) {
       await supabase.from("profiles").update({
         trial_active: true,
         trial_started_at: new Date().toISOString(),
         trial_ends_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
         trial_plan: resolvedTier,
+        premium_trial_used: true,
         paypal_subscription_id: subscriptionId,
         subscription_status: "trial",
         updated_at: new Date().toISOString(),

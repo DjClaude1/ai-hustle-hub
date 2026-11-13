@@ -5,12 +5,11 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// PayPal billing is kept in USD for broad payment compatibility.
-// The UI presents the SA-friendly reference prices: ~R99 Starter and ~R249 Pro.
+// PayPal bills in USD. Keep these values aligned with src/lib/plans.ts.
 const PAYPAL_BASE = "https://api-m.paypal.com";
 const TIERS: Record<string, { name: string; amount: string }> = {
-  creator: { name: "AI Hustle Hub Starter", amount: "6.00" },
-  pro: { name: "AI Hustle Hub Pro", amount: "15.00" },
+  creator: { name: "AI Hustle Hub Starter", amount: "12.00" },
+  pro: { name: "AI Hustle Hub Pro", amount: "29.00" },
 };
 
 async function getAccessToken() {
@@ -27,9 +26,11 @@ async function getAccessToken() {
   return j.access_token as string;
 }
 
-async function ensurePlan(supabase: any, token: string, tier: "creator" | "pro") {
+async function ensurePlan(supabase: any, token: string, tier: "creator" | "pro", includeTrial: boolean) {
   const { data: cached } = await supabase.from("paypal_plans").select("*").eq("tier", tier).maybeSingle();
-  if (cached?.plan_id) return cached.plan_id as string;
+  if (includeTrial && cached?.plan_id && Number(cached.amount) === Number(TIERS[tier].amount) && cached.currency === "USD") {
+    return cached.plan_id as string;
+  }
   const cfg = TIERS[tier];
   const prodRes = await fetch(`${PAYPAL_BASE}/v1/catalogs/products`, {
     method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
@@ -40,17 +41,27 @@ async function ensurePlan(supabase: any, token: string, tier: "creator" | "pro")
   const planRes = await fetch(`${PAYPAL_BASE}/v1/billing/plans`, {
     method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", Prefer: "return=representation" },
     body: JSON.stringify({
-      product_id: product.id, name: `${cfg.name} Monthly (7-Day Free Trial)`, status: "ACTIVE",
-      billing_cycles: [
-        { frequency: { interval_unit: "DAY", interval_count: 7 }, tenure_type: "TRIAL", sequence: 1, total_cycles: 1, pricing_scheme: { fixed_price: { value: "0.00", currency_code: "USD" } } },
-        { frequency: { interval_unit: "MONTH", interval_count: 1 }, tenure_type: "REGULAR", sequence: 2, total_cycles: 0, pricing_scheme: { fixed_price: { value: cfg.amount, currency_code: "USD" } } },
-      ],
+      product_id: product.id, name: `${cfg.name} Monthly${includeTrial ? " (7-Day Free Trial)" : ""}`, status: "ACTIVE",
+      billing_cycles: includeTrial
+        ? [
+            { frequency: { interval_unit: "DAY", interval_count: 7 }, tenure_type: "TRIAL", sequence: 1, total_cycles: 1, pricing_scheme: { fixed_price: { value: "0.00", currency_code: "USD" } } },
+            { frequency: { interval_unit: "MONTH", interval_count: 1 }, tenure_type: "REGULAR", sequence: 2, total_cycles: 0, pricing_scheme: { fixed_price: { value: cfg.amount, currency_code: "USD" } } },
+          ]
+        : [
+            { frequency: { interval_unit: "MONTH", interval_count: 1 }, tenure_type: "REGULAR", sequence: 1, total_cycles: 0, pricing_scheme: { fixed_price: { value: cfg.amount, currency_code: "USD" } } },
+          ],
       payment_preferences: { auto_bill_outstanding: true, setup_fee_failure_action: "CONTINUE", payment_failure_threshold: 2 },
     }),
   });
   const plan = await planRes.json();
   if (!planRes.ok) throw new Error("Unable to create the PayPal subscription plan.");
-  await supabase.from("paypal_plans").insert({ tier, product_id: product.id, plan_id: plan.id, amount: Number(cfg.amount), currency: "USD" });
+  if (includeTrial) {
+    const { error: savePlanError } = await supabase.from("paypal_plans").upsert(
+      { tier, product_id: product.id, plan_id: plan.id, amount: Number(cfg.amount), currency: "USD" },
+      { onConflict: "tier" },
+    );
+    if (savePlanError) throw new Error("Unable to save the PayPal subscription plan.");
+  }
   return plan.id as string;
 }
 
@@ -68,12 +79,13 @@ Deno.serve(async (req) => {
     if (!["creator", "pro"].includes(tier)) return new Response(JSON.stringify({ error: "Invalid tier" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     const { data: profile } = await supabase.from("profiles").select("premium_trial_used, subscription_tier, subscription_status, trial_active").eq("id", user.id).maybeSingle();
-    if (profile?.premium_trial_used || profile?.trial_active || (profile?.subscription_tier && profile.subscription_tier !== "free")) {
-      return new Response(JSON.stringify({ error: "Your premium trial has already been used. Please choose a paid plan to continue." }), { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    if (profile?.trial_active || (profile?.subscription_tier && profile.subscription_tier !== "free" && profile.subscription_status === "active")) {
+      return new Response(JSON.stringify({ error: "You already have an active subscription." }), { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
+    const includeTrial = !profile?.premium_trial_used;
 
     const token = await getAccessToken();
-    const planId = await ensurePlan(supabase, token, tier);
+    const planId = await ensurePlan(supabase, token, tier, includeTrial);
     const subRes = await fetch(`${PAYPAL_BASE}/v1/billing/subscriptions`, {
       method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", Prefer: "return=representation" },
       body: JSON.stringify({ plan_id: planId, custom_id: `${user.id}|${tier}`, subscriber: { email_address: user.email }, application_context: { brand_name: "AI Hustle Hub", user_action: "SUBSCRIBE_NOW", return_url: returnUrl, cancel_url: cancelUrl } }),
@@ -81,7 +93,7 @@ Deno.serve(async (req) => {
     const sub = await subRes.json();
     if (!subRes.ok) throw new Error("Unable to create the PayPal subscription.");
     const approveLink = sub.links?.find((l: any) => l.rel === "approve")?.href;
-    await supabase.from("payments").insert({ user_id: user.id, tier, amount: Number(TIERS[tier].amount), status: "pending", provider: "paypal", subscription_id: sub.id, payment_id: sub.id, metadata: { trial: true, previous_trial_used: profile?.premium_trial_used ?? false } });
+    await supabase.from("payments").insert({ user_id: user.id, tier, amount: Number(TIERS[tier].amount), status: "pending", provider: "paypal", subscription_id: sub.id, payment_id: sub.id, metadata: { trial: includeTrial, previous_trial_used: profile?.premium_trial_used ?? false } });
     return new Response(JSON.stringify({ subscriptionId: sub.id, approveUrl: approveLink }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     console.error(e);

@@ -116,7 +116,10 @@ const CvUploadSection = ({ onParsed, loading }: { onParsed: (data: Record<string
     setParsing(true);
     try {
       let cvText = "";
-      if (["jpg", "jpeg", "png", "webp", "bmp", "tif", "tiff"].includes(ext || "")) {\n        toast.message("Reading CV image with OCR…");\n        cvText = await extractImageText(file);\n      } else if (ext === "pdf") {
+      if (["jpg", "jpeg", "png", "webp", "bmp", "tif", "tiff"].includes(ext || "")) {
+        toast.message("Reading CV image with OCR…" );
+        cvText = await extractImageText(file);
+      } else if (ext === "pdf") {
         toast.message("Reading PDF…");
         cvText = await extractPdfText(file);
       } else if (ext === "docx") {
@@ -187,7 +190,7 @@ const ToolPage = () => {
       if (!resp.body) { toast.error("No response stream"); setLoading(false); return; }
       const reader = resp.body.getReader(); const decoder = new TextDecoder(); let buffer = ""; let accumulated = "";
       while (true) { const { done, value } = await reader.read(); if (done) break; buffer += decoder.decode(value, { stream: true }); let newlineIndex: number; while ((newlineIndex = buffer.indexOf("\n")) !== -1) { let line = buffer.slice(0, newlineIndex); buffer = buffer.slice(newlineIndex + 1); if (line.endsWith("\r")) line = line.slice(0, -1); if (line.startsWith(":") || line.trim() === "") continue; if (!line.startsWith("data: ")) continue; const jsonStr = line.slice(6).trim(); if (jsonStr === "[DONE]") break; try { const parsed = JSON.parse(jsonStr); const content = parsed.choices?.[0]?.delta?.content; if (content) { accumulated += content; setOutput(accumulated); } } catch { buffer = line + "\n" + buffer; break; } } }
-      if (buffer.trim()) for (let raw of buffer.split("\n")) { if (!raw) continue; if (raw.endsWith("\r")) raw = raw.slice(0, -1); if (raw.startsWith(":") || raw.trim() === "" || !raw.startsWith("data: ")) continue; const jsonStr = raw.slice(6).trim(); if (jsonStr === "[DONE]") continue; try { const parsed = JSON.parse(jsonStr); const content = parsed.choices?.[0]?.delta?.content; if (content) { accumulated += content; setOutput(accumulated); } } catch {} }
+      if (buffer.trim()) for (let raw of buffer.split("\n")) { if (!raw) continue; if (raw.endsWith("\r")) raw = raw.slice(0, -1); if (raw.startsWith(":") || raw.trim() === "" || !raw.startsWith("data: ")) continue; const jsonStr = raw.slice(6).trim(); if (jsonStr === "[DONE]") continue; try { const parsed = JSON.parse(jsonStr); const content = parsed.choices?.[0]?.delta?.content; if (content) { accumulated += content; setOutput(accumulated); } } catch { /* Ignore malformed or partial SSE chunks and continue reading. */ } }
       if (!isAdmin && remaining !== null) setRemaining(Math.max(0, remaining - 1)); void refreshSub();
       if (user && accumulated) supabase.from("generations").insert({ user_id: user.id, tool_id: tool.id, tool_name: tool.name, inputs: { ...inputValues, _template: selectedTemplate }, output: accumulated }).then(({ error }) => { if (error) console.error("Save generation error:", error); });
       toast.success("Generated successfully!");

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { categories, tools, type ToolCategory } from "@/data/tools";
 import { ScrollReveal } from "@/components/ScrollReveal";
@@ -39,7 +39,7 @@ const Dashboard = () => {
 
   const clearDashboardQuery = () => window.history.replaceState({}, "", "/dashboard");
 
-  const handleUpgrade = async (upgradeTier: "creator" | "pro") => {
+  const handleUpgrade = useCallback(async (upgradeTier: "creator" | "pro") => {
     if (!user || !session) return;
     try {
       const { data, error } = await supabase.functions.invoke("paypal-create-subscription", {
@@ -55,7 +55,7 @@ const Dashboard = () => {
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Payment initiation failed");
     }
-  };
+  }, [user, session]);
 
   const openUpgradeFor = (toolId: string) => {
     const required = getRequiredPlan(toolId);
@@ -95,7 +95,7 @@ const Dashboard = () => {
     handledUpgradeRef.current = requestedUpgrade;
     clearDashboardQuery();
     void handleUpgrade(requestedUpgrade as "creator" | "pro");
-  }, [requestedUpgrade, session, user]);
+  }, [requestedUpgrade, session, user, handleUpgrade]);
 
   useEffect(() => {
     if (paypalCancel) {
@@ -122,7 +122,7 @@ const Dashboard = () => {
       }
       clearDashboardQuery();
     })();
-  }, [paypalSubId, paypalCancel, user]);
+  }, [paypalSubId, paypalCancel, user, refresh]);
 
   const planName = isAdmin ? "Admin" : PLANS[tier].name;
   const planBadge = isAdmin ? "bg-destructive/10 text-destructive" : PLANS[tier].badgeClass;

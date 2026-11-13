@@ -144,11 +144,11 @@ const BookPages = ({ output, title }: { output: string; title: string }) => {
 const EmailMock = ({ output, inputs }: { output: string; inputs?: Record<string, string> }) => {
   // Try to detect Subject line at top
   const lines = output.split("\n");
-  const subjectIdx = lines.findIndex((l) => /^subject\s*[:\-]/i.test(l));
+  const subjectIdx = lines.findIndex((l) => /^subject\s*[:-]/i.test(l));
   let subject = inputs?.subject || inputs?.topic || "Your message from us";
   let body = output;
   if (subjectIdx >= 0) {
-    subject = lines[subjectIdx].replace(/^subject\s*[:\-]\s*/i, "").trim();
+    subject = lines[subjectIdx].replace(/^subject\s*[:-]\s*/i, "").trim();
     body = lines.slice(subjectIdx + 1).join("\n").trim();
   }
   const sender = inputs?.brand || inputs?.business || inputs?.company || "Your Brand";
@@ -236,10 +236,10 @@ const WebPageMock = ({ output, toolName }: { output: string; toolName: string })
    ────────────────────────────────────────────── */
 const ScriptMock = ({ output, toolName }: { output: string; toolName: string }) => {
   const scenes = useMemo(() => {
-    const split = output.split(/\n(?=(?:scene|hook|intro|outro|cta|step)\s*\d*\s*[:\-])/i);
+    const split = output.split(/\n(?=(?:scene|hook|intro|outro|cta|step)\s*\d*\s*[:-])/i);
     return split.map((chunk) => {
       const firstLine = chunk.split("\n")[0];
-      const titleMatch = firstLine.match(/^(scene|hook|intro|outro|cta|step)\s*\d*\s*[:\-]\s*(.*)/i);
+      const titleMatch = firstLine.match(/^(scene|hook|intro|outro|cta|step)\s*\d*\s*[:-]\s*(.*)/i);
       if (titleMatch) {
         const label = `${titleMatch[1].toUpperCase()}${titleMatch[0].match(/\d+/) ? " " + titleMatch[0].match(/\d+/)![0] : ""}`;
         return { label, headline: titleMatch[2] || "", body: chunk.split("\n").slice(1).join("\n") };
@@ -346,7 +346,7 @@ const GigMock = ({ output, inputs }: { output: string; inputs?: Record<string, s
 const NamesGrid = ({ output }: { output: string }) => {
   const names = output
     .split("\n")
-    .map((l) => l.replace(/^[\s\d.\-*•)]+/, "").trim())
+    .map((l) => l.replace(/^[\s\d.*•)-]+/, "").trim())
     .filter((l) => l.length > 1 && l.length < 80)
     .slice(0, 30);
   if (names.length < 3) return <div className="bg-card border border-border rounded-lg p-6"><Prose>{output}</Prose></div>;
@@ -354,7 +354,7 @@ const NamesGrid = ({ output }: { output: string }) => {
     <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 max-w-[860px] mx-auto">
       {names.map((n, i) => {
         // Split "Name — tagline" if present
-        const parts = n.split(/\s*[—–\-:]\s*/);
+        const parts = n.split(/\s*[—–:-]\s*/);
         const name = parts[0];
         const tagline = parts.slice(1).join(" — ");
         return (

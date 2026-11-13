@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { PLANS, type PlanTier, canAccessTool, getRequiredPlan, tierMeets } from "@/lib/plans";
@@ -52,7 +52,7 @@ export const useSubscription = (): SubscriptionData => {
   const [trialEndsAt, setTrialEndsAt] = useState<string | null>(null);
   const [subscriptionStatus, setSubscriptionStatus] = useState<string>("none");
 
-  const load = async () => {
+  const load = useCallback(async () => {
     if (!user) {
       setTier("free");
       setIsAdmin(false);
@@ -81,9 +81,9 @@ export const useSubscription = (): SubscriptionData => {
     const trialExpired = profile?.trial_ends_at ? new Date(profile.trial_ends_at) < new Date() : false;
     setTrialActive(Boolean(profile?.trial_active) && !trialExpired);
     setLoading(false);
-  };
+  }, [user]);
 
-  useEffect(() => { void load(); }, [user]);
+  useEffect(() => { void load(); }, [load]);
 
   const plan = PLANS[tier];
   const trialRemaining = Math.max(0, trialLimit - trialUsed);
