@@ -159,7 +159,7 @@ export const JobAutoApply = ({ cvText, role, location, skills, fullName, hasAcce
         <div className="flex items-center gap-2">
           <Briefcase className="h-5 w-5 text-primary" />
           <h2 className="font-display text-lg font-semibold text-foreground">Job Search & Auto Apply</h2>
-          <Badge variant="secondary">Pro</Badge>
+          <Badge variant="secondary">Premium</Badge>
         </div>
         {hasAccess && (
           <div className="flex gap-1 rounded-lg bg-secondary p-1 text-sm">
@@ -178,8 +178,8 @@ export const JobAutoApply = ({ cvText, role, location, skills, fullName, hasAcce
 
       {!hasAccess ? (
         <div className="mt-4 flex flex-col items-start gap-3 rounded-lg border border-dashed border-border p-5">
-          <div className="flex items-center gap-2 text-sm text-foreground"><Lock className="h-4 w-4" /> Reserved for a future premium tier. Core CV tools remain free.</div>
-          <Button onClick={onUpgrade}>Premium feature coming later</Button>
+          <div className="flex items-center gap-2 text-sm text-foreground"><Lock className="h-4 w-4" /> Included with AI Hustle Hub Premium. Your core CV tools remain free.</div>
+          <Button onClick={onUpgrade}>View Premium plans</Button>
         </div>
       ) : tab === "search" ? (
         <>

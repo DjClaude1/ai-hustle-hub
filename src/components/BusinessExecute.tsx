@@ -74,7 +74,7 @@ export const BusinessExecute = ({ plan, hasAccess, onUpgrade }: Props) => {
       {!hasAccess ? (
         <div className="mt-4 flex items-center gap-3">
           <Lock className="h-4 w-4 text-muted-foreground" />
-          <Button onClick={onUpgrade}>Premium feature coming later</Button>
+          <Button onClick={onUpgrade}>View Premium plans</Button>
         </div>
       ) : (
         <>

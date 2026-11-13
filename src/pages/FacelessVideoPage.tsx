@@ -254,7 +254,7 @@ const FacelessVideoPage = () => {
             <p className="text-sm text-muted-foreground">AI script → scene splits → Pexels footage → stitched MP4</p>
           </div>
           <span className="flex items-center gap-1 rounded-full bg-accent/10 px-2.5 py-1 text-xs font-medium text-accent">
-            <Crown className="h-3 w-3" /> Premium · coming soon
+            <Crown className="h-3 w-3" /> {locked ? "Premium required" : "Premium included"}
           </span>
         </div>
 
@@ -262,13 +262,13 @@ const FacelessVideoPage = () => {
           <div className="mb-4 rounded-xl border border-accent/30 bg-accent/5 p-6 text-center">
             <Lock className="h-8 w-8 text-accent mx-auto mb-2" />
             <h3 className="font-display text-lg font-semibold text-foreground">
-              Premium feature — coming soon
+              Included with Premium
             </h3>
             <p className="text-sm text-muted-foreground mt-1 mb-4">
-              "This video workflow uses multiple AI and media services. It will return later as an optional premium feature."
+              Subscribe to Premium to unlock this video workflow. Your standard tools remain free.
             </p>
             <Button variant="accent" size="sm" onClick={() => setUpgradeOpen(true)}>
-              <Crown className="h-4 w-4" /> Why is this locked?
+              <Crown className="h-4 w-4" /> View Premium plans
             </Button>
           </div>
         )}
