@@ -18,7 +18,7 @@ import { SharePanel } from "@/components/SharePanel";
 import { ProductPreview } from "@/components/ProductPreview";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import { DownloadMenu } from "@/components/DownloadMenu";
-import { getRequiredPlan, type PlanTier } from "@/lib/plans";
+import type { PlanTier } from "@/lib/plans";
 import { getNextWorkflowStep } from "@/lib/workflows";
 import { buildManualGenerationBrief, extractBasicCvData, isAiCreditsError } from "@/lib/aiFallbacks";
 import { JobAutoApply } from "@/components/JobAutoApply";
@@ -165,7 +165,7 @@ const HistoryPanel = ({ toolId, onLoad }: { toolId: string; onLoad: (output: str
 };
 
 const ToolPage = () => {
-  const { toolId } = useParams<{ toolId: string }>(); const tool = getToolById(toolId || ""); const { user, session } = useAuth(); const { tier, isPro, isAdmin, canAccessTool, getRequiredPlan: getReqPlan, trialActive, trialAvailable, trialRemaining, refresh: refreshSub } = useSubscription(); const navigate = useNavigate();
+  const { toolId } = useParams<{ toolId: string }>(); const tool = getToolById(toolId || ""); const { user, session } = useAuth(); const { tier, isPro, isAdmin, canAccessTool, getRequiredPlan: getReqPlan, trialActive, refresh: refreshSub } = useSubscription(); const navigate = useNavigate();
   const [inputValues, setInputValues] = useState<Record<string, string>>({}); const [selectedTemplate, setSelectedTemplate] = useState("classic-professional"); const [outputTone, setOutputTone] = useState("Professional"); const [outputLength, setOutputLength] = useState("Detailed"); const [targetAudience, setTargetAudience] = useState("General audience"); const [output, setOutput] = useState(""); const [loading, setLoading] = useState(false); const [copied, setCopied] = useState(false); const [remaining, setRemaining] = useState<number | null>(null); const [draftSaving, setDraftSaving] = useState(false); const [generationFallback, setGenerationFallback] = useState<GenerationFallback | null>(null); const [editingOutput, setEditingOutput] = useState(false); const [upgradeOpen, setUpgradeOpen] = useState(false); const [upgradeRequired, setUpgradeRequired] = useState<PlanTier>("creator"); const abortRef = useRef<AbortController | null>(null); const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null); const previewRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { if (!user || !toolId) return; const loadDraft = async () => { const { data } = await supabase.from("drafts").select("inputs").eq("tool_id", toolId).eq("user_id", user.id).maybeSingle(); const savedInputs = (data?.inputs as Record<string, string> | null) || {}; let nextInputs = savedInputs; try { const raw = window.sessionStorage.getItem("ai-hustle-workflow-context"); if (raw) { const context = JSON.parse(raw) as { sourceToolId?: string; output?: string }; if (context.output && context.sourceToolId) { const targetTextarea = tool?.inputs.find((input) => input.type === "textarea")?.key; if (targetTextarea && !nextInputs[targetTextarea]?.trim()) nextInputs = { ...nextInputs, [targetTextarea]: `Previous workflow output from ${context.sourceToolId}:\n\n${context.output.slice(0, 12000)}` }; window.sessionStorage.removeItem("ai-hustle-workflow-context"); } } } catch (error) { console.warn("Could not restore workflow context", error); } if (Object.keys(nextInputs).length) setInputValues(nextInputs); if (nextInputs._template) setSelectedTemplate(nextInputs._template); }; loadDraft(); }, [user, toolId, tool]);
