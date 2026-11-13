@@ -178,8 +178,8 @@ export const JobAutoApply = ({ cvText, role, location, skills, fullName, hasAcce
 
       {!hasAccess ? (
         <div className="mt-4 flex flex-col items-start gap-3 rounded-lg border border-dashed border-border p-5">
-          <div className="flex items-center gap-2 text-sm text-foreground"><Lock className="h-4 w-4" /> Available on the Pro plan (or free trial).</div>
-          <Button onClick={onUpgrade}>Unlock auto apply</Button>
+          <div className="flex items-center gap-2 text-sm text-foreground"><Lock className="h-4 w-4" /> Reserved for a future premium tier. Core CV tools remain free.</div>
+          <Button onClick={onUpgrade}>Premium feature coming later</Button>
         </div>
       ) : tab === "search" ? (
         <>
