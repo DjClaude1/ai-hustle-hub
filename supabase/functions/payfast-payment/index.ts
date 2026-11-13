@@ -1,165 +1,99 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-import { crypto as stdCrypto } from "https://deno.land/std@0.168.0/crypto/mod.ts";
-import { encode as hexEncode } from "https://deno.land/std@0.168.0/encoding/hex.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
-
-const TIERS: Record<string, { name: string; amount: number }> = {
-  pro: { name: "Pro Plan", amount: 14900 },
-  business: { name: "Business Plan", amount: 49900 },
+const PLANS: Record<string, { amount: number; frequency: string; label: string }> = {
+  monthly: { amount: 199, frequency: "3", label: "Monthly Premium" },
+  annual: { amount: 1990, frequency: "6", label: "Annual Premium" },
 };
-
-const encodePayfastValue = (value: string) =>
-  encodeURIComponent(value.trim()).replace(/%20/g, "+");
-
-const appendQueryParams = (url: string, params: Record<string, string>) => {
-  const parsedUrl = new URL(url);
-  Object.entries(params).forEach(([key, value]) => {
-    parsedUrl.searchParams.set(key, value);
-  });
-  return parsedUrl.toString();
-};
-
-serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
-
+const encodeValue = (value: string) => encodeURIComponent(value.trim()).replace(/%20/g, "+");
+async function md5(value: string) {
+  const digest = await crypto.subtle.digest("MD5", new TextEncoder().encode(value));
+  return Array.from(new Uint8Array(digest)).map(byte => byte.toString(16).padStart(2, "0")).join("");
+}
+function makeSignature(data: Record<string, string>, passphrase: string) {
+  const params = Object.entries(data).filter(([, value]) => value !== "").map(([key, value]) => `${key}=${encodeValue(value)}`).join("&");
+  return md5(`${params}&passphrase=${encodeValue(passphrase)}`);
+}
+function appendParams(url: string, params: Record<string, string>) {
+  const parsed = new URL(url);
+  for (const [key, value] of Object.entries(params)) parsed.searchParams.set(key, value);
+  return parsed.toString();
+}
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
+  if (Deno.env.get("BILLING_ENABLED") !== "true") return json({ error: "Premium checkout is being prepared. Please try again soon." }, 503);
   try {
-    const { tier, returnUrl, cancelUrl } = await req.json();
-
-    if (!tier || !TIERS[tier]) {
-      return new Response(
-        JSON.stringify({ error: "Invalid tier. Choose 'pro' or 'business'." }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
     const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) return json({ error: "Please sign in before subscribing." }, 401);
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
-    if (!authHeader || authHeader === `Bearer ${supabaseKey}`) {
-      return new Response(
-        JSON.stringify({ error: "Authentication required" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const userClient = createClient(supabaseUrl, supabaseKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
+    const userClient = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: authHeader } } });
     const { data: { user } } = await userClient.auth.getUser();
-    if (!user) {
-      return new Response(
-        JSON.stringify({ error: "Invalid user" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
+    if (!user) return json({ error: "Your sign-in session is invalid. Please sign in again." }, 401);
+    const { period, returnUrl, cancelUrl } = await req.json();
+    const plan = PLANS[String(period)];
+    if (!plan || typeof returnUrl !== "string" || typeof cancelUrl !== "string") return json({ error: "Invalid Premium checkout request." }, 400);
+    const allowedOrigins = new Set(["https://ai-hustle-hub-delta.vercel.app", "http://localhost:5173"]);
+    const origin = req.headers.get("origin");
+    if (origin && !allowedOrigins.has(origin)) return json({ error: "Checkout is only available from the official AI Hustle Hub site." }, 403);
     const merchantId = Deno.env.get("PAYFAST_MERCHANT_ID");
     const merchantKey = Deno.env.get("PAYFAST_MERCHANT_KEY");
-    const passphrase = Deno.env.get("PAYFAST_PASSPHRASE")?.trim();
-    const sandboxMode = Deno.env.get("PAYFAST_SANDBOX") === "true";
-
-    if (!merchantId || !merchantKey) {
-      throw new Error("PayFast credentials not configured");
-    }
-
-    const tierInfo = TIERS[tier];
-    const amountInRands = (tierInfo.amount / 100).toFixed(2);
-    const paymentId = `${user.id}_${tier}_${Date.now()}`;
-
-    const notifyUrl = `${supabaseUrl}/functions/v1/payfast-notify`;
-    const fallbackDashboardUrl = `${req.headers.get("origin") || "https://example.com"}/dashboard`;
-    const successUrl = appendQueryParams(returnUrl || fallbackDashboardUrl, {
-      payment: "processing",
-      paymentId,
-      tier,
-    });
-    const cancelledUrl = appendQueryParams(cancelUrl || fallbackDashboardUrl, {
-      payment: "cancelled",
-      paymentId,
-      tier,
-    });
-
-    const adminClient = createClient(supabaseUrl, serviceKey);
-
-    const { error: paymentInsertError } = await adminClient.from("payments").insert({
-      user_id: user.id,
-      payment_id: paymentId,
-      status: "pending",
-      amount: Number(amountInRands),
-      tier,
-    });
-
-    if (paymentInsertError) {
-      console.error("Failed to create pending payment:", paymentInsertError);
-      throw new Error("Failed to initialize payment");
-    }
-
-    const fullName = user.user_metadata?.full_name?.trim() || "User";
-    const nameParts = fullName.split(/\s+/).filter(Boolean);
-    const firstName = nameParts[0] || "User";
-    const lastName = nameParts.slice(1).join(" ");
-
-    // Build PayFast data - order matters for signature
-    const pfData: Record<string, string> = {
+    const passphrase = Deno.env.get("PAYFAST_PASSPHRASE");
+    if (!merchantId || !merchantKey || !passphrase) return json({ error: "PayFast is not fully configured. The owner must finish merchant setup first." }, 503);
+    const admin = createClient(supabaseUrl, serviceKey);
+    const { data: profile } = await admin.from("profiles").select("subscription_tier,subscription_status,payfast_subscription_token").eq("id", user.id).maybeSingle();
+    if (profile?.subscription_tier === "pro" && profile.subscription_status === "active") return json({ error: "You already have an active Premium subscription." }, 409);
+    const paymentId = `ahh_${user.id.replaceAll("-", "").slice(0, 16)}_${Date.now()}`;
+    const fullName = String(user.user_metadata?.full_name || user.user_metadata?.name || "").trim();
+    const parts = fullName.split(/\s+/).filter(Boolean);
+    const originForReturn = "https://ai-hustle-hub-delta.vercel.app";
+    const safeReturn = new URL(returnUrl);
+    const safeCancel = new URL(cancelUrl);
+    if (![originForReturn, "http://localhost:5173"].includes(safeReturn.origin) || safeReturn.origin !== safeCancel.origin) return json({ error: "Invalid return URL." }, 400);
+    const successUrl = appendParams(safeReturn.toString(), { payment: "processing", paymentId, tier: "pro", period: String(period) });
+    const cancelledUrl = appendParams(safeCancel.toString(), { payment: "cancelled", paymentId, tier: "pro", period: String(period) });
+    const amount = plan.amount.toFixed(2);
+    const data: Record<string, string> = {
       merchant_id: merchantId,
       merchant_key: merchantKey,
       return_url: successUrl,
       cancel_url: cancelledUrl,
-      notify_url: notifyUrl,
-      name_first: firstName,
-      name_last: lastName,
+      notify_url: `${supabaseUrl}/functions/v1/payfast-notify`,
+      name_first: parts[0] || "AI Hustle",
+      name_last: parts.slice(1).join(" "),
       email_address: user.email || "",
       m_payment_id: paymentId,
-      amount: amountInRands,
-      item_name: `AI Hustle Studio - ${tierInfo.name}`,
-      item_description: `Monthly subscription to ${tierInfo.name}`,
+      amount,
+      item_name: plan.label,
+      item_description: `AI Hustle Hub Premium ${period} subscription`,
+      subscription_type: "1",
+      recurring_amount: amount,
+      frequency: plan.frequency,
+      cycles: "0",
+      subscription_notify_email: "true",
+      subscription_notify_webhook: "true",
+      subscription_notify_buyer: "true",
       custom_str1: user.id,
-      custom_str2: tier,
+      custom_str2: String(period),
+      custom_str3: "pro",
     };
-
-    // Generate MD5 signature using Deno std hash
-    const paramString = Object.entries(pfData)
-      .filter(([_, v]) => v !== "")
-      .map(([k, v]) => `${k}=${encodePayfastValue(v)}`)
-      .join("&");
-    const signaturePayload = passphrase ? `${paramString}&passphrase=${encodePayfastValue(passphrase)}` : paramString;
-
-    const encoder = new TextEncoder();
-    const data = encoder.encode(signaturePayload);
-    const hashBuffer = await stdCrypto.subtle.digest("MD5", data);
-    const signature = new TextDecoder().decode(hexEncode(new Uint8Array(hashBuffer)));
-
-    pfData.signature = signature;
-
-    const pfUrl = sandboxMode
-      ? "https://sandbox.payfast.co.za/eng/process"
-      : "https://www.payfast.co.za/eng/process";
-
-    console.log("PayFast payment URL generated for user:", user.id, "tier:", tier);
-
-    return new Response(
-      JSON.stringify({
-        checkoutUrl: pfUrl,
-        paymentData: pfData,
-        paymentId,
-      }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  } catch (e) {
-    console.error("PayFast payment error:", e);
-    return new Response(
-      JSON.stringify({ error: e instanceof Error ? e.message : "Payment creation failed" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    data.signature = await makeSignature(data, passphrase);
+    const { error: insertError } = await admin.from("payments").insert({
+      user_id: user.id, payment_id: paymentId, status: "pending", amount: plan.amount, tier: "pro", provider: "payfast",
+      metadata: { billingPeriod: period, currency: "ZAR", recurring: true },
+    });
+    if (insertError) throw new Error("Could not create the payment record. Please try again.");
+    const sandbox = Deno.env.get("PAYFAST_SANDBOX") === "true";
+    return json({ checkoutUrl: sandbox ? "https://sandbox.payfast.co.za/eng/process" : "https://www.payfast.co.za/eng/process", paymentData: data, paymentId });
+  } catch (error) {
+    console.error("payfast-payment error", error);
+    return json({ error: error instanceof Error ? error.message : "Unable to start checkout." }, 500);
   }
 });
