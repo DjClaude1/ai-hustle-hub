@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { Check, Crown, Loader2, ShieldCheck, Zap } from "lucide-react";
+import { Check, Crown, Loader2, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/hooks/useSubscription";
 import { supabase } from "@/integrations/supabase/client";
-import { createPayfastCheckout, submitPayfastCheckout, type BillingPeriod } from "@/lib/payfast";
+import { createPayPalCheckout, type BillingPeriod } from "@/lib/paypal";
 
 const Subscription = () => {
   const { user } = useAuth();
@@ -16,20 +16,22 @@ const Subscription = () => {
   const [busy, setBusy] = useState(false);
   const [paymentState, setPaymentState] = useState<"idle" | "pending" | "complete" | "cancelled">("idle");
   const [searchParams] = useSearchParams();
-  const paymentId = searchParams.get("paymentId");
+  const subscriptionId = searchParams.get("subscription_id") || searchParams.get("token");
   const paymentFlag = searchParams.get("payment");
 
   const checkPayment = useCallback(async () => {
-    if (!paymentId || !user) return;
-    const { data, error } = await supabase.from("payments").select("status").eq("payment_id", paymentId).eq("user_id", user.id).maybeSingle();
-    if (error) { toast.error("Could not check payment status yet."); return; }
-    const status = String(data?.status || "").toLowerCase();
-    if (status === "complete" || status === "completed") { setPaymentState("complete"); await refresh(); }
-    else if (paymentFlag === "cancelled") setPaymentState("cancelled");
+    if (!subscriptionId || !user) return;
+    setPaymentState("pending");
+    const { data, error } = await supabase.functions.invoke("paypal-verify-subscription", { body: { subscriptionId } });
+    if (error || data?.error) { toast.error(data?.error || "Could not verify your PayPal subscription yet."); return; }
+    if (data?.active) { setPaymentState("complete"); await refresh(); }
     else setPaymentState("pending");
-  }, [paymentId, paymentFlag, user, refresh]);
+  }, [subscriptionId, user, refresh]);
 
-  useEffect(() => { if (paymentId && user) void checkPayment(); }, [paymentId, user, checkPayment]);
+  useEffect(() => {
+    if (subscriptionId && user) void checkPayment();
+    else if (paymentFlag === "cancelled") setPaymentState("cancelled");
+  }, [subscriptionId, user, checkPayment, paymentFlag]);
 
   const startCheckout = async () => {
     if (!user) return;
@@ -39,15 +41,10 @@ const Subscription = () => {
       const accessToken = sessionData.session?.access_token;
       if (!accessToken) throw new Error("Your session has expired. Please sign in again.");
       const origin = window.location.origin;
-      const checkout = await createPayfastCheckout({
-        accessToken,
-        period,
-        returnUrl: `${origin}/subscription?payment=processing`,
-        cancelUrl: `${origin}/subscription?payment=cancelled`,
-      });
-      submitPayfastCheckout(checkout);
+      const checkout = await createPayPalCheckout({ accessToken, period, returnUrl: origin + "/subscription?payment=processing", cancelUrl: origin + "/subscription?payment=cancelled" });
+      window.location.assign(checkout.approveUrl);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Unable to start checkout.");
+      toast.error(error instanceof Error ? error.message : "Unable to start PayPal checkout.");
       setBusy(false);
     }
   };
@@ -60,11 +57,9 @@ const Subscription = () => {
         <h1 className="font-display text-3xl font-bold tracking-tight text-foreground sm:text-4xl">Choose how far you want to go</h1>
         <p className="mt-3 text-muted-foreground">Keep using AI Hustle Hub for free, or unlock the advanced tools when you're ready.</p>
       </div>
-
       {paymentState !== "idle" && <Card className="mx-auto mb-6 max-w-2xl border-primary/30"><CardContent className="flex flex-col items-center gap-3 p-5 text-center">
-        {paymentState === "complete" ? <><ShieldCheck className="h-7 w-7 text-primary" /><p className="font-semibold">Premium is active. Welcome aboard!</p></> : paymentState === "cancelled" ? <><p className="font-semibold">Checkout was cancelled. No payment was taken.</p></> : <><Loader2 className="h-6 w-6 animate-spin text-primary" /><p className="font-semibold">We're confirming your payment with PayFast.</p><p className="text-sm text-muted-foreground">Keep this page open and check again shortly. Do not submit another payment while this one is pending.</p><Button variant="outline" onClick={() => void checkPayment()}>Check payment status</Button></>}
+        {paymentState === "complete" ? <><ShieldCheck className="h-7 w-7 text-primary" /><p className="font-semibold">Premium is active. Welcome aboard!</p></> : paymentState === "cancelled" ? <p className="font-semibold">Checkout was cancelled. No payment was taken.</p> : <><Loader2 className="h-6 w-6 animate-spin text-primary" /><p className="font-semibold">We're confirming your subscription with PayPal.</p><p className="text-sm text-muted-foreground">Premium activates after PayPal confirms the subscription payment.</p><Button variant="outline" onClick={() => void checkPayment()}>Check subscription status</Button></>}
       </CardContent></Card>}
-
       <div className="grid gap-5 md:grid-cols-2">
         <Card className="border-border">
           <CardHeader><CardTitle>Free</CardTitle><CardDescription>Everything you need to get started.</CardDescription><div className="pt-2 font-display text-4xl font-bold">R0 <span className="text-sm font-normal text-muted-foreground">forever</span></div></CardHeader>
@@ -85,12 +80,12 @@ const Subscription = () => {
               <Button size="sm" variant={period === "annual" ? "default" : "ghost"} onClick={() => setPeriod("annual")}>Annual · Save 17%</Button>
             </div>
             {["Up to 600 AI generations per month","Automated job-application workflows","Business execution automation","Faceless video production studio","Ebook, course and PDF guide creation","Business-in-a-Box workflows","Priority generation and advanced AI"].map(x => <div key={x} className="flex items-start gap-2 text-sm"><Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />{x}</div>)}
-            {premium ? <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-sm font-medium text-primary">Your Premium subscription is active ({subscriptionStatus}).</div> : user ? <Button className="mt-3 w-full" onClick={() => void startCheckout()} disabled={busy}>{busy ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Connecting to PayFast…</> : "Subscribe securely with PayFast"}</Button> : <Button asChild className="mt-3 w-full"><Link to="/auth?mode=signup">Create an account to subscribe</Link></Button>}
-            <p className="text-center text-[11px] leading-relaxed text-muted-foreground">Secure recurring card payments are processed by PayFast. Subscriptions can be cancelled through your PayFast buyer account. Payment activation is confirmed server-to-server.</p>
+            {premium ? <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-sm font-medium text-primary">Your Premium subscription is active ({subscriptionStatus}).</div> : user ? <Button className="mt-3 w-full" onClick={() => void startCheckout()} disabled={busy}>{busy ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Connecting to PayPal…</> : "Subscribe securely with PayPal"}</Button> : <Button asChild className="mt-3 w-full"><Link to="/auth?mode=signup">Create an account to subscribe</Link></Button>}
+            <p className="text-center text-[11px] leading-relaxed text-muted-foreground">Recurring payments are processed securely by PayPal. Premium activates only after the server verifies your subscription payment.</p>
           </CardContent>
         </Card>
       </div>
-      <div className="mx-auto mt-6 flex max-w-2xl items-center justify-center gap-2 text-xs text-muted-foreground"><ShieldCheck className="h-4 w-4" />Your card details are handled by PayFast, never stored by AI Hustle Hub.</div>
+      <div className="mx-auto mt-6 flex max-w-2xl items-center justify-center gap-2 text-xs text-muted-foreground"><ShieldCheck className="h-4 w-4" />Your payment details are handled by PayPal, never stored by AI Hustle Hub.</div>
     </div>
   </main>;
 };
