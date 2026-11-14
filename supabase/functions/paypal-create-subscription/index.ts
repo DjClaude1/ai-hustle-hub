@@ -6,8 +6,8 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 const PRICES = {
-  monthly: { amount: "199.00", interval_unit: "MONTH", interval_count: 1, label: "Premium Monthly" },
-  annual: { amount: "1990.00", interval_unit: "YEAR", interval_count: 1, label: "Premium Annual" },
+  monthly: { amount: "11.75", interval_unit: "MONTH", interval_count: 1, label: "Premium Monthly" },
+  annual: { amount: "117.50", interval_unit: "YEAR", interval_count: 1, label: "Premium Annual" },
 } as const;
 const reply = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 const paypalBase = () => Deno.env.get("PAYPAL_ENVIRONMENT") === "sandbox" ? "https://api-m.sandbox.paypal.com" : "https://api-m.paypal.com";
@@ -25,7 +25,7 @@ async function getAccessToken() {
 
 async function getPlan(admin: any, token: string, period: "monthly" | "annual") {
   const cfg = PRICES[period], cacheKey = "pro_" + period;
-  const { data: cached, error } = await admin.from("paypal_plans").select("*").eq("tier", cacheKey).eq("currency", "ZAR").eq("amount", Number(cfg.amount)).order("created_at", { ascending: false }).limit(1).maybeSingle();
+  const { data: cached, error } = await admin.from("paypal_plans").select("*").eq("tier", cacheKey).eq("currency", "USD").eq("amount", Number(cfg.amount)).order("created_at", { ascending: false }).limit(1).maybeSingle();
   if (error) throw new Error("Unable to read the PayPal plan cache.");
   if (cached?.plan_id) {
     const check = await fetch(paypalBase() + "/v1/billing/plans/" + cached.plan_id, { headers: { Authorization: "Bearer " + token } });
@@ -42,16 +42,16 @@ async function getPlan(admin: any, token: string, period: "monthly" | "annual") 
     method: "POST", headers: { Authorization: "Bearer " + token, "Content-Type": "application/json", Prefer: "return=representation" },
     body: JSON.stringify({
       product_id: product.id, name: cfg.label, description: "AI Hustle Hub Premium " + period + " subscription", status: "ACTIVE",
-      billing_cycles: [{ frequency: { interval_unit: cfg.interval_unit, interval_count: cfg.interval_count }, tenure_type: "REGULAR", sequence: 1, total_cycles: 0, pricing_scheme: { fixed_price: { value: cfg.amount, currency_code: "ZAR" } } }],
+      billing_cycles: [{ frequency: { interval_unit: cfg.interval_unit, interval_count: cfg.interval_count }, tenure_type: "REGULAR", sequence: 1, total_cycles: 0, pricing_scheme: { fixed_price: { value: cfg.amount, currency_code: "USD" } } }],
       payment_preferences: { auto_bill_outstanding: true, setup_fee_failure_action: "CONTINUE", payment_failure_threshold: 2 },
     }),
   });
   const plan = await planRes.json();
   if (!planRes.ok || !plan.id) {
     console.error("PayPal plan creation rejected", JSON.stringify(plan));
-    throw new Error(plan.message || plan.details?.[0]?.description || "PayPal could not create the ZAR subscription plan. Confirm ZAR recurring billing support with PayPal.");
+    throw new Error(plan.message || plan.details?.[0]?.description || "PayPal could not create the USD subscription plan. Confirm ZAR recurring billing support with PayPal.");
   }
-  const row = { tier: cacheKey, product_id: product.id, plan_id: plan.id, amount: Number(cfg.amount), currency: "ZAR" };
+  const row = { tier: cacheKey, product_id: product.id, plan_id: plan.id, amount: Number(cfg.amount), currency: "USD" };
   const saved = cached?.id ? await admin.from("paypal_plans").update(row).eq("id", cached.id) : await admin.from("paypal_plans").insert(row);
   if (saved.error) throw new Error("PayPal plan was created but could not be cached. Please retry.");
   return plan.id as string;
@@ -101,7 +101,7 @@ Deno.serve(async (req) => {
     const { error: paymentError } = await admin.from("payments").insert({
       user_id: user.id, tier: "pro", amount: Number(cfg.amount), status: "pending", provider: "paypal",
       subscription_id: subscription.id, payment_id: subscription.id,
-      metadata: { billingPeriod: period, currency: "ZAR", planId, recurring: true },
+      metadata: { billingPeriod: period, currency: "USD", approximateZar: period === "annual" ? 1990 : 199, planId, recurring: true },
     });
     if (paymentError) throw new Error("Could not save the subscription reference. Contact support before retrying.");
     return reply({ subscriptionId: subscription.id, approveUrl });
