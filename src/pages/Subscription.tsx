@@ -71,8 +71,8 @@ const Subscription = () => {
         <Card className="relative border-primary/50 shadow-card">
           <div className="absolute -top-3 right-5 rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground">Recommended</div>
           <CardHeader><CardTitle className="flex items-center gap-2"><Crown className="h-5 w-5 text-primary" />Premium</CardTitle><CardDescription>For creators, freelancers and business builders who want to scale.</CardDescription>
-            <div className="flex items-end gap-2 pt-2 font-display text-4xl font-bold">{period === "monthly" ? "R199" : "R1,990"}<span className="pb-1 text-sm font-normal text-muted-foreground">/{period === "monthly" ? "month" : "year"}</span></div>
-            <p className="text-xs text-muted-foreground">{period === "annual" ? "Save R398 compared with 12 monthly payments." : "Flexible monthly billing. Cancel any time."}</p>
+            <div className="flex items-end gap-2 pt-2 font-display text-4xl font-bold">{period === "monthly" ? "US$11.75" : "US$117.50"}<span className="pb-1 text-sm font-normal text-muted-foreground">/{period === "monthly" ? "month" : "year"}</span></div>
+            <p className="text-xs text-muted-foreground">{period === "annual" ? "Save US$23.50 versus 12 monthly payments (about R398)." : "About R199/month at recent exchange rates. Cancel any time."}</p>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="grid grid-cols-2 gap-2 rounded-lg bg-secondary p-1">
@@ -81,7 +81,7 @@ const Subscription = () => {
             </div>
             {["Up to 600 AI generations per month","Automated job-application workflows","Business execution automation","Faceless video production studio","Ebook, course and PDF guide creation","Business-in-a-Box workflows","Priority generation and advanced AI"].map(x => <div key={x} className="flex items-start gap-2 text-sm"><Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />{x}</div>)}
             {premium ? <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-sm font-medium text-primary">Your Premium subscription is active ({subscriptionStatus}).</div> : user ? <Button className="mt-3 w-full" onClick={() => void startCheckout()} disabled={busy}>{busy ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Connecting to PayPal…</> : "Subscribe securely with PayPal"}</Button> : <Button asChild className="mt-3 w-full"><Link to="/auth?mode=signup">Create an account to subscribe</Link></Button>}
-            <p className="text-center text-[11px] leading-relaxed text-muted-foreground">Recurring payments are processed securely by PayPal. Premium activates only after the server verifies your subscription payment.</p>
+            <p className="text-center text-[11px] leading-relaxed text-muted-foreground">PayPal bills in USD. Your bank or PayPal may apply a changing ZAR conversion rate and fees. Premium activates only after the server verifies payment.</p>
           </CardContent>
         </Card>
       </div>
