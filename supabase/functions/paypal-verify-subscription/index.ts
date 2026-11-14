@@ -31,17 +31,18 @@ Deno.serve(async (req) => {
     if (!res.ok) throw new Error("PayPal could not verify this subscription.");
     const [ownerId, tier, period] = String(sub.custom_id || "").split("|");
     if (ownerId !== user.id || tier !== "pro" || !["monthly", "annual"].includes(period)) return json({ error: "PayPal subscription ownership could not be confirmed." }, 403);
-    const expected = period === "annual" ? 1990 : 199;
+    const expected = period === "annual" ? 117.5 : 11.75;
     const paidAmount = Number(sub.billing_info?.last_payment?.amount?.value ?? 0);
-    const paymentCompleted = sub.billing_info?.last_payment?.status === "COMPLETED" && Math.abs(paidAmount - expected) < 0.01;
+    const paidCurrency = String(sub.billing_info?.last_payment?.amount?.currency_code || "");
+    const paymentCompleted = sub.billing_info?.last_payment?.status === "COMPLETED" && paidCurrency === "USD" && Math.abs(paidAmount - expected) < 0.01;
     const active = sub.status === "ACTIVE" && paymentCompleted;
     if (active) {
       await admin.from("profiles").update({ subscription_tier: "pro", is_premium: true, trial_active: false, subscription_status: "active", paypal_subscription_id: subscriptionId, subscription_period: period, updated_at: new Date().toISOString() }).eq("id", user.id);
-      await admin.from("payments").update({ status: "complete", updated_at: new Date().toISOString(), metadata: { ...(payment.metadata || {}), billingPeriod: period, currency: "ZAR", verified: true } }).eq("id", payment.id);
+      await admin.from("payments").update({ status: "complete", updated_at: new Date().toISOString(), metadata: { ...(payment.metadata || {}), billingPeriod: period, currency: "USD", verified: true } }).eq("id", payment.id);
     } else if (["CANCELLED", "EXPIRED", "SUSPENDED"].includes(sub.status)) {
       await admin.from("payments").update({ status: String(sub.status).toLowerCase(), updated_at: new Date().toISOString() }).eq("id", payment.id);
     }
-    return json({ status: sub.status, active, period, currency: "ZAR" });
+    return json({ status: sub.status, active, period, currency: "USD" });
   } catch (error) {
     console.error("paypal-verify-subscription error", error);
     return json({ error: error instanceof Error ? error.message : "Subscription verification failed." }, 500);

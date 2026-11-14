@@ -6,12 +6,12 @@ Premium checkout now uses PayPal Subscriptions. Live charging is deliberately di
 
 ## Prices and entitlements
 
-- Premium monthly: **R199**
-- Premium annual: **R1,990** (save R398 versus 12 monthly payments)
+- Premium monthly: **US$11.75** (approximately R199)
+- Premium annual: **US$117.50** (approximately R1,990; save US$23.50 / about R398 versus 12 monthly payments)
 - Free: 20 AI generations per day
 - Premium: up to 600 AI generations per month and the advanced workflows shown on the subscription page.
 
-The app creates and caches separate monthly and annual PayPal plans in the existing `paypal_plans` table. Plan currency is ZAR. PayPal must accept ZAR recurring billing for the merchant account; if it rejects the currency, do not silently alter the displayed prices. Confirm the supported billing currency with PayPal before choosing another currency.
+The app creates and caches separate monthly and annual PayPal plans in the existing `paypal_plans` table. PayPal REST subscription plans are billed in USD because ZAR is absent from PayPal supported REST payment currencies. The USD prices approximate R199 and R1,990 using a recent indicative exchange rate; the ZAR equivalent can change with PayPal or bank conversion rates and fees.
 
 ## 1. Create PayPal app credentials
 
@@ -66,7 +66,7 @@ Only after sandbox checkout, payment, webhook and cancellation tests pass:
 3. Set `PAYPAL_ENVIRONMENT=live`.
 4. Confirm the PayPal Business account is approved to receive commercial and recurring payments in South Africa.
 5. Set `PAYPAL_BILLING_ENABLED=true`.
-6. Complete an owner-approved live checkout only if comfortable with the real R199 / R1,990 charge.
+6. Complete an owner-approved live checkout only if comfortable with the real US$11.75 / US$117.50 charge.
 
 ## Customer cancellations
 
