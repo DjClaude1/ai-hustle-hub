@@ -46,14 +46,14 @@ Deno.serve(async (req) => {
     if (!profile) return reply("Ignored: user profile not found");
     const period = String(payment?.metadata?.billingPeriod || customPeriod || "");
     if (!["monthly", "annual"].includes(period) || !payment) return reply("Ignored: no matching subscription payment");
-    const expected = period === "annual" ? 1990 : 199;
+    const expected = period === "annual" ? 117.5 : 11.75;
 
     if (type === "PAYMENT.SALE.COMPLETED") {
       const amount = Number(resource.amount?.total || resource.amount?.value || 0);
-      const currency = String(resource.amount?.currency || resource.amount?.currency_code || "ZAR");
-      if (currency !== "ZAR" || (amount && Math.abs(amount - expected) > 0.01)) return reply("Payment amount or currency mismatch", 400);
+      const currency = String(resource.amount?.currency || resource.amount?.currency_code || "USD");
+      if (currency !== "USD" || (amount && Math.abs(amount - expected) > 0.01)) return reply("Payment amount or currency mismatch", 400);
       await admin.from("profiles").update({ subscription_tier: "pro", is_premium: true, trial_active: false, subscription_status: "active", paypal_subscription_id: subscriptionId, subscription_period: period, updated_at: new Date().toISOString() }).eq("id", userId);
-      await admin.from("payments").update({ status: "complete", updated_at: new Date().toISOString(), metadata: { ...(payment.metadata || {}), billingPeriod: period, currency: "ZAR", lastEventId: event.id } }).eq("id", payment.id);
+      await admin.from("payments").update({ status: "complete", updated_at: new Date().toISOString(), metadata: { ...(payment.metadata || {}), billingPeriod: period, currency: "USD", lastEventId: event.id } }).eq("id", payment.id);
     } else if (["BILLING.SUBSCRIPTION.CANCELLED", "BILLING.SUBSCRIPTION.EXPIRED", "BILLING.SUBSCRIPTION.SUSPENDED", "BILLING.SUBSCRIPTION.PAYMENT.FAILED", "PAYMENT.SALE.REFUNDED", "PAYMENT.SALE.REVERSED"].includes(type)) {
       if (profile.paypal_subscription_id && profile.paypal_subscription_id !== subscriptionId) return reply("Ignored: subscription is no longer current");
       const status = type === "BILLING.SUBSCRIPTION.CANCELLED" ? "cancelled" :
