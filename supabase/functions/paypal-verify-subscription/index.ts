@@ -1,73 +1,49 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
-
-const PAYPAL_BASE = "https://api-m.paypal.com";
-
-async function getAccessToken() {
-  const id = Deno.env.get("PAYPAL_CLIENT_ID")!;
-  const secret = Deno.env.get("PAYPAL_CLIENT_SECRET")!;
-  if (!id || !secret) throw new Error("PayPal is not configured yet. Please contact support.");
-  const res = await fetch(`${PAYPAL_BASE}/v1/oauth2/token`, {
-    method: "POST",
-    headers: { Authorization: `Basic ${btoa(`${id}:${secret}`)}`, "Content-Type": "application/x-www-form-urlencoded" },
-    body: "grant_type=client_credentials",
-  });
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type", "Access-Control-Allow-Methods": "POST, OPTIONS" };
+const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
+const base = () => Deno.env.get("PAYPAL_ENVIRONMENT") === "sandbox" ? "https://api-m.sandbox.paypal.com" : "https://api-m.paypal.com";
+async function getToken() {
+  const id = Deno.env.get("PAYPAL_CLIENT_ID"), secret = Deno.env.get("PAYPAL_CLIENT_SECRET");
+  if (!id || !secret) throw new Error("PayPal is not configured.");
+  const res = await fetch(base() + "/v1/oauth2/token", { method: "POST", headers: { Authorization: "Basic " + btoa(id + ":" + secret), "Content-Type": "application/x-www-form-urlencoded" }, body: "grant_type=client_credentials" });
   const data = await res.json();
-  if (!res.ok || !data.access_token) throw new Error("PayPal authentication failed. Please try again later.");
+  if (!res.ok || !data.access_token) throw new Error("PayPal authentication failed.");
   return data.access_token as string;
 }
-
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
+  if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
   try {
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-    const userClient = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, { global: { headers: { Authorization: authHeader } } });
-    const { data: userData } = await userClient.auth.getUser();
-    const user = userData.user;
-    if (!user) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    const auth = req.headers.get("Authorization");
+    if (!auth?.startsWith("Bearer ")) return json({ error: "Unauthorized" }, 401);
+    const url = Deno.env.get("SUPABASE_URL")!;
+    const userClient = createClient(url, Deno.env.get("SUPABASE_ANON_KEY")!, { global: { headers: { Authorization: auth } } });
+    const { data: { user } } = await userClient.auth.getUser();
+    if (!user) return json({ error: "Unauthorized" }, 401);
     const { subscriptionId } = await req.json();
-    if (!subscriptionId) return new Response(JSON.stringify({ error: "Missing subscriptionId" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    const token = await getAccessToken();
-    const r = await fetch(`${PAYPAL_BASE}/v1/billing/subscriptions/${subscriptionId}`, { headers: { Authorization: `Bearer ${token}` } });
-    const sub = await r.json();
-    if (!r.ok) throw new Error("Unable to verify the PayPal subscription.");
-    const [customUserId, tier] = String(sub.custom_id || "").split("|");
-    if (customUserId !== user.id) return new Response(JSON.stringify({ error: "Subscription does not belong to user" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    // Only an ACTIVE subscription is authorized. APPROVAL_PENDING and APPROVED
-    // must not grant premium access until PayPal confirms activation.
-    const authorized = sub.status === "ACTIVE";
-    const cycleExec = sub.billing_info?.cycle_executions ?? [];
-    const trialCycle = cycleExec.find((c: any) => c.tenure_type === "TRIAL");
-    const regularCycle = cycleExec.find((c: any) => c.tenure_type === "REGULAR");
-    const paidCyclesDone = Number(regularCycle?.cycles_completed ?? 0);
-    const inTrial = authorized && Boolean(trialCycle) && paidCyclesDone === 0;
-    const paidActive = authorized && !inTrial && sub.billing_info?.last_payment?.status === "COMPLETED";
-    await supabase.from("payments").update({ status: inTrial ? "TRIAL" : paidActive ? "ACTIVE" : sub.status, updated_at: new Date().toISOString() }).eq("subscription_id", subscriptionId);
-    if (authorized && (tier === "creator" || tier === "pro")) {
-      if (inTrial) {
-        const trialEnds = trialCycle?.next_billing_time ? new Date(trialCycle.next_billing_time) : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-        await supabase.from("profiles").update({
-          trial_active: true,
-          trial_started_at: new Date().toISOString(),
-          trial_ends_at: trialEnds.toISOString(),
-          trial_plan: tier,
-          premium_trial_used: true,
-          paypal_subscription_id: subscriptionId,
-          subscription_status: "trial",
-          updated_at: new Date().toISOString(),
-        }).eq("id", user.id);
-      } else if (paidActive) {
-        await supabase.from("profiles").update({ subscription_tier: tier, is_premium: true, trial_active: false, subscription_status: "active", paypal_subscription_id: subscriptionId, updated_at: new Date().toISOString() }).eq("id", user.id);
-      }
+    if (typeof subscriptionId !== "string" || !/^I-[A-Z0-9]+$/i.test(subscriptionId)) return json({ error: "Invalid subscription reference." }, 400);
+    const admin = createClient(url, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    const { data: payment } = await admin.from("payments").select("id,user_id,tier,amount,metadata").eq("subscription_id", subscriptionId).eq("user_id", user.id).eq("provider", "paypal").maybeSingle();
+    if (!payment || payment.tier !== "pro") return json({ error: "This subscription does not belong to your account." }, 403);
+    const token = await getToken();
+    const res = await fetch(base() + "/v1/billing/subscriptions/" + subscriptionId, { headers: { Authorization: "Bearer " + token } });
+    const sub = await res.json();
+    if (!res.ok) throw new Error("PayPal could not verify this subscription.");
+    const [ownerId, tier, period] = String(sub.custom_id || "").split("|");
+    if (ownerId !== user.id || tier !== "pro" || !["monthly", "annual"].includes(period)) return json({ error: "PayPal subscription ownership could not be confirmed." }, 403);
+    const expected = period === "annual" ? 1990 : 199;
+    const paidAmount = Number(sub.billing_info?.last_payment?.amount?.value ?? 0);
+    const paymentCompleted = sub.billing_info?.last_payment?.status === "COMPLETED" && Math.abs(paidAmount - expected) < 0.01;
+    const active = sub.status === "ACTIVE" && paymentCompleted;
+    if (active) {
+      await admin.from("profiles").update({ subscription_tier: "pro", is_premium: true, trial_active: false, subscription_status: "active", paypal_subscription_id: subscriptionId, subscription_period: period, updated_at: new Date().toISOString() }).eq("id", user.id);
+      await admin.from("payments").update({ status: "complete", updated_at: new Date().toISOString(), metadata: { ...(payment.metadata || {}), billingPeriod: period, currency: "ZAR", verified: true } }).eq("id", payment.id);
+    } else if (["CANCELLED", "EXPIRED", "SUSPENDED"].includes(sub.status)) {
+      await admin.from("payments").update({ status: String(sub.status).toLowerCase(), updated_at: new Date().toISOString() }).eq("id", payment.id);
     }
-    return new Response(JSON.stringify({ status: sub.status, tier, active: inTrial || paidActive, inTrial }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
-  } catch (e) {
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Subscription verification failed." }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return json({ status: sub.status, active, period, currency: "ZAR" });
+  } catch (error) {
+    console.error("paypal-verify-subscription error", error);
+    return json({ error: error instanceof Error ? error.message : "Subscription verification failed." }, 500);
   }
 });
