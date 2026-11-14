@@ -32,7 +32,8 @@ Deno.serve(async (req) => {
     const [ownerId, tier, period] = String(sub.custom_id || "").split("|");
     if (ownerId !== user.id || tier !== "pro" || !["monthly", "annual"].includes(period)) return json({ error: "PayPal subscription ownership could not be confirmed." }, 403);
     const expected = period === "annual" ? 117.5 : 11.75;
-    const paidAmount = Number(sub.billing_info?.last_payment?.amount?.value ?? 0);\n    const paidCurrency = String(sub.billing_info?.last_payment?.amount?.currency_code || "");
+    const paidAmount = Number(sub.billing_info?.last_payment?.amount?.value ?? 0);
+    const paidCurrency = String(sub.billing_info?.last_payment?.amount?.currency_code || "");
     const paymentCompleted = sub.billing_info?.last_payment?.status === "COMPLETED" && paidCurrency === "USD" && Math.abs(paidAmount - expected) < 0.01;
     const active = sub.status === "ACTIVE" && paymentCompleted;
     if (active) {
