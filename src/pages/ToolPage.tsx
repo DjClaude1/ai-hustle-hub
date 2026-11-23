@@ -25,7 +25,7 @@ import { JobAutoApply } from "@/components/JobAutoApply";
 import { BusinessExecute } from "@/components/BusinessExecute";
 
 const runOcr = async (source: HTMLCanvasElement | File): Promise<string> => {
-  const tesseract: any = await import(/* @vite-ignore */ "https://esm.sh/tesseract.js@5.1.1");
+  const tesseract: any = await import("tesseract.js");
   const worker = await tesseract.createWorker("eng");
   try {
     const result = await worker.recognize(source);
@@ -61,7 +61,7 @@ const extractPdfText = async (file: File): Promise<string> => {
 };
 const extractImageText = async (file: File): Promise<string> => runOcr(file);
 const extractDocxText = async (file: File): Promise<string> => {
-  const mammoth: any = await import(/* @vite-ignore */ "https://esm.sh/mammoth@1.9.0");
+  const mammoth: any = await import("mammoth");
   const result = await mammoth.extractRawText({ arrayBuffer: await file.arrayBuffer() });
   return String(result.value || "").trim();
 };
@@ -76,7 +76,7 @@ const extractHtmlText = (raw: string): string => {
   return (doc.body?.innerText || doc.body?.textContent || "").trim();
 };
 const extractOdtText = async (file: File): Promise<string> => {
-  const zip: any = await import(/* @vite-ignore */ "https://esm.sh/fflate@0.8.2");
+  const zip: any = await import("fflate");
   const archive = zip.unzipSync(new Uint8Array(await file.arrayBuffer()));
   const content = archive["content.xml"];
   if (!content) throw new Error("No readable ODT content found");

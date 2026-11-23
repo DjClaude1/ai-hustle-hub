@@ -18,6 +18,16 @@ const DAYS = [
 
 const Growth = () => {
   const { user } = useAuth();
+  const growthClient = supabase as unknown as {
+    rpc: (name: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>;
+    from: (table: string) => {
+      select: (columns: string) => {
+        eq: (column: string, value: string) => {
+          maybeSingle: () => Promise<{ data: unknown; error: { message: string } | null }>;
+        };
+      };
+    };
+  };
   const [code, setCode] = useState("");
   const [referrals, setReferrals] = useState(0);
   const [bonus, setBonus] = useState(0);
@@ -31,11 +41,20 @@ const Growth = () => {
     const load = async () => {
       setLoading(true);
       const [{ data: stats }, { data: progress }] = await Promise.all([
-        supabase.rpc("get_referral_stats"),
-        supabase.from("hustle_challenge_progress").select("completed_days,current_day").eq("user_id", user.id).maybeSingle(),
+        growthClient.rpc("get_referral_stats"),
+        growthClient.from("hustle_challenge_progress").select("completed_days,current_day").eq("user_id", user.id).maybeSingle(),
       ]);
-      if (stats) { setCode(stats.code ?? ""); setReferrals(Number(stats.referrals ?? 0)); setBonus(Number(stats.bonus ?? 0)); }
-      if (progress) { setCompleted(progress.completed_days ?? []); setCurrentDay(progress.current_day ?? 1); }
+      if (typeof stats === "object" && stats !== null) {
+        const values = stats as Record<string, unknown>;
+        if (typeof values.code === "string") setCode(values.code);
+        if (typeof values.referrals === "number" || typeof values.referrals === "string") setReferrals(Number(values.referrals));
+        if (typeof values.bonus === "number" || typeof values.bonus === "string") setBonus(Number(values.bonus));
+      }
+      if (typeof progress === "object" && progress !== null) {
+        const values = progress as Record<string, unknown>;
+        if (Array.isArray(values.completed_days)) setCompleted(values.completed_days.filter((day): day is number => typeof day === "number"));
+        if (typeof values.current_day === "number") setCurrentDay(values.current_day);
+      }
       setLoading(false);
     };
     void load();
@@ -43,9 +62,11 @@ const Growth = () => {
 
   const copy = async (text: string, message = "Copied!") => { await navigator.clipboard.writeText(text); toast.success(message); };
   const completeDay = async (day: number) => {
-    const { data, error } = await supabase.rpc("claim_challenge_day", { p_day: day });
-    if (error || !data?.ok) { toast.error(data?.error ?? error?.message ?? "Could not update your challenge."); return; }
-    setCompleted(data.completed_days ?? []); setCurrentDay(data.current_day ?? day);
+    const { data, error } = await growthClient.rpc("claim_challenge_day", { p_day: day });
+    const result = typeof data === "object" && data !== null ? data as Record<string, unknown> : null;
+    if (error || result?.ok !== true) { toast.error(typeof result?.error === "string" ? result.error : error?.message ?? "Could not update your challenge."); return; }
+    setCompleted(Array.isArray(result.completed_days) ? result.completed_days.filter((completedDay): completedDay is number => typeof completedDay === "number") : []);
+    setCurrentDay(typeof result.current_day === "number" ? result.current_day : day);
     toast.success(day === 7 ? "Challenge complete — now launch it!" : `Day ${day} complete!`);
   };
   const share = async () => {
