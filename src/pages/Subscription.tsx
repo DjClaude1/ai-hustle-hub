@@ -1,20 +1,20 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { Check, Crown, Loader2, ShieldCheck } from "lucide-react";
+import { Check, Crown, Loader2, ShieldCheck, FlaskConical } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/hooks/useSubscription";
 import { supabase } from "@/integrations/supabase/client";
-import { createPayPalCheckout, type BillingPeriod } from "@/lib/paypal";
+import { createPayPalSandboxCheckout, type BillingPeriod } from "@/lib/paypal";
 
 const Subscription = () => {
   const { user } = useAuth();
   const { tier, subscriptionStatus, refresh } = useSubscription();
   const [period, setPeriod] = useState<BillingPeriod>("monthly");
   const [busy, setBusy] = useState(false);
-  const [paymentState, setPaymentState] = useState<"idle" | "pending" | "complete" | "cancelled">("idle");
+  const [paymentState, setPaymentState] = useState<"idle" | "pending" | "complete" | "cancelled" | "sandbox">("idle");
   const [searchParams] = useSearchParams();
   const subscriptionId = searchParams.get("subscription_id") || searchParams.get("token");
   const paymentFlag = searchParams.get("payment");
@@ -29,8 +29,9 @@ const Subscription = () => {
   }, [subscriptionId, user, refresh]);
 
   useEffect(() => {
-    if (subscriptionId && user) void checkPayment();
-    else if (paymentFlag === "cancelled") setPaymentState("cancelled");
+    if (paymentFlag === "sandbox-processing") setPaymentState("sandbox");
+    else if (paymentFlag === "sandbox-cancelled" || paymentFlag === "cancelled") setPaymentState("cancelled");
+    else if (subscriptionId && user) void checkPayment();
   }, [subscriptionId, user, checkPayment, paymentFlag]);
 
   const startCheckout = async () => {
@@ -41,7 +42,7 @@ const Subscription = () => {
       const accessToken = sessionData.session?.access_token;
       if (!accessToken) throw new Error("Your session has expired. Please sign in again.");
       const origin = window.location.origin;
-      const checkout = await createPayPalCheckout({ accessToken, period, returnUrl: origin + "/subscription?payment=processing", cancelUrl: origin + "/subscription?payment=cancelled" });
+      const checkout = await createPayPalSandboxCheckout({ accessToken, period, returnUrl: origin + "/subscription", cancelUrl: origin + "/subscription" });
       window.location.assign(checkout.approveUrl);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to start PayPal checkout.");
@@ -58,7 +59,7 @@ const Subscription = () => {
         <p className="mt-3 text-muted-foreground">Keep using AI Hustle Hub for free, or unlock the advanced tools when you're ready.</p>
       </div>
       {paymentState !== "idle" && <Card className="mx-auto mb-6 max-w-2xl border-primary/30"><CardContent className="flex flex-col items-center gap-3 p-5 text-center">
-        {paymentState === "complete" ? <><ShieldCheck className="h-7 w-7 text-primary" /><p className="font-semibold">Premium is active. Welcome aboard!</p></> : paymentState === "cancelled" ? <p className="font-semibold">Checkout was cancelled. No payment was taken.</p> : <><Loader2 className="h-6 w-6 animate-spin text-primary" /><p className="font-semibold">We're confirming your subscription with PayPal.</p><p className="text-sm text-muted-foreground">Premium activates after PayPal confirms the subscription payment.</p><Button variant="outline" onClick={() => void checkPayment()}>Check subscription status</Button></>}
+        {paymentState === "complete" ? <><ShieldCheck className="h-7 w-7 text-primary" /><p className="font-semibold">Premium is active. Welcome aboard!</p></> : paymentState === "sandbox" ? <><FlaskConical className="h-7 w-7 text-primary" /><p className="font-semibold">Sandbox approval returned.</p><p className="text-sm text-muted-foreground">This was a test transaction only. No production payment, Premium entitlement, or production payment record was created.</p></> : paymentState === "cancelled" ? <p className="font-semibold">Sandbox checkout was cancelled. No production payment was taken.</p> : <><Loader2 className="h-6 w-6 animate-spin text-primary" /><p className="font-semibold">We're confirming your subscription with PayPal.</p><p className="text-sm text-muted-foreground">Premium activates after PayPal confirms the subscription payment.</p><Button variant="outline" onClick={() => void checkPayment()}>Check subscription status</Button></>}
       </CardContent></Card>}
       <div className="grid gap-5 md:grid-cols-2">
         <Card className="border-border">
@@ -80,8 +81,8 @@ const Subscription = () => {
               <Button size="sm" variant={period === "annual" ? "default" : "ghost"} onClick={() => setPeriod("annual")}>Annual · Save 17%</Button>
             </div>
             {["Up to 600 AI generations per month","Automated job-application workflows","Business execution automation","Faceless video production studio","Ebook, course and PDF guide creation","Business-in-a-Box workflows","Priority generation and advanced AI"].map(x => <div key={x} className="flex items-start gap-2 text-sm"><Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />{x}</div>)}
-            {premium ? <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-sm font-medium text-primary">Your Premium subscription is active ({subscriptionStatus}).</div> : user ? <Button className="mt-3 w-full" onClick={() => void startCheckout()} disabled={busy}>{busy ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Connecting to PayPal…</> : "Subscribe securely with PayPal"}</Button> : <Button asChild className="mt-3 w-full"><Link to="/auth?mode=signup">Create an account to subscribe</Link></Button>}
-            <p className="text-center text-[11px] leading-relaxed text-muted-foreground">PayPal bills in USD. Your bank or PayPal may apply a changing ZAR conversion rate and fees. Premium activates only after the server verifies payment.</p>
+            {premium ? <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-sm font-medium text-primary">Your Premium subscription is active ({subscriptionStatus}).</div> : user ? <Button className="mt-3 w-full" onClick={() => void startCheckout()} disabled={busy}>{busy ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Connecting to PayPal…</> : "Start PayPal Sandbox test"}</Button> : <Button asChild className="mt-3 w-full"><Link to="/auth?mode=signup">Create an account to subscribe</Link></Button>}
+            <p className="text-center text-[11px] leading-relaxed text-muted-foreground">Sandbox testing only. No real payment will be taken and Sandbox approval will not activate production Premium.</p>
           </CardContent>
         </Card>
       </div>
